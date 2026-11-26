@@ -725,9 +725,10 @@ a { color: inherit; }
 .cifras {
   grid-column: 1 / -1;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e3);
-  margin: 0; padding-top: var(--e4);
+  margin: 0; padding-top: var(--e2);
 }
-.cifras div { display: flex; flex-direction: column-reverse; justify-content: start; gap: .5rem; }
+/* Mismo sangrado que el texto de las tarjetas de arriba, para que cada cifra quede alineada con su paso. */
+.cifras div { display: flex; flex-direction: column-reverse; justify-content: start; gap: .5rem; padding-inline: var(--e3); }
 .cifras dd { margin: 0; font: 700 clamp(2.5rem, 1.8rem + 2.6vw, 4.5rem)/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .cifras dt { color: var(--texto-2); font-size: var(--t-pequeno); }
 
