@@ -548,11 +548,15 @@ function contarPeliculas() {
   explica.replaceChildren(`del catálogo de Netflix España: las que duran ${tiempo} o menos.`);
   if (cinco.length) {
     const mejor = cinco[0];
-    explica.append(" La más vista es ", crear("a", {
+    explica.append(" La más popular es ", crear("a", {
       href: `?t=${encodeURIComponent(titulo(mejor))}`, texto: titulo(mejor),
       onclick: (e) => { e.preventDefault(); elegir(mejor); },
     }), `, que dura ${horas(estado.catalogo[mejor][6])}.`);
   }
+
+  $("#abanico-pie").replaceChildren(
+    crear("strong", { texto: `Las ${cinco.length} películas más populares que puedes ver en ${tiempo}.` }),
+    crear("br"), "Pulsa una y te recomendamos otras parecidas.");
 
   const clave = cinco.join();
   if (clave === abanicoActual) return;
