@@ -324,7 +324,6 @@ async function elegir(i, { desplazar = true, historial = true } = {}) {
   estado.actual = i;
   entrada.value = titulo(i);
   if (historial) history.replaceState(null, "", `?t=${encodeURIComponent(titulo(i))}`);
-  document.title = `Si te gustó ${titulo(i)} · ¿Qué veo ahora?`;
   ponerAmbiente(estado.catalogo[i][4]);
   await pintar();
   if (desplazar) $("#mira").scrollIntoView({ behavior: menosMovimiento.matches ? "auto" : "smooth" });
