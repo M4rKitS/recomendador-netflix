@@ -722,19 +722,30 @@ a { color: inherit; }
 .pesos li.coincide .peso-barra span { background: var(--luz); }
 .pesos li.coincide .peso-nombre::after { content: " ✓"; color: var(--luz); font-size: .9em; }
 
-.cifras {
+/* Las cifras no son un paso más: van en su propio panel, centradas, con otra luz. */
+.cifras-marco {
   grid-column: 1 / -1;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e3);
-  margin: 0; padding-top: var(--e2);
+  margin-top: 0;
+  padding: var(--e5) var(--e4);
+  border-radius: var(--radio-g);
+  background:
+    radial-gradient(ellipse 60% 120% at 50% 0%, color-mix(in oklab, var(--luz) 9%, transparent), transparent 70%),
+    color-mix(in oklab, var(--superficie) 70%, var(--fondo));
+  text-align: center;
 }
-/* Mismo sangrado que el texto de las tarjetas de arriba, para que cada cifra quede alineada con su paso. */
-.cifras div { display: flex; flex-direction: column-reverse; justify-content: start; gap: .5rem; padding-inline: var(--e3); }
-.cifras dd { margin: 0; font: 700 clamp(2.5rem, 1.8rem + 2.6vw, 4.5rem)/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-.cifras dt { color: var(--texto-2); font-size: var(--t-pequeno); }
+.cifras-titulo { margin: 0 0 var(--e4); font: 600 var(--t-h3)/1.2 var(--display); letter-spacing: -.02em; color: var(--texto-2); }
+.cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e4) var(--e3); margin: 0; }
+/* El número arriba y la etiqueta debajo, todos los números a la misma altura aunque la etiqueta ocupe dos líneas. */
+.cifras div { display: flex; flex-direction: column; justify-content: start; align-items: center; gap: .5rem; }
+.cifras dd { order: -1; }
+.cifras dd { margin: 0; font: 700 clamp(2.5rem, 1.8rem + 2.6vw, 4.5rem)/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--luz); }
+.cifras div:last-child dd { color: var(--texto); }
+.cifras dt { color: var(--texto-2); font-size: var(--t-pequeno); max-width: 12rem; text-wrap: balance; }
 
 @media (max-width: 960px) {
   .como-rejilla { grid-template-columns: 1fr; }
-  .cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--e4); }
+  .cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cifras-marco { padding: var(--e4) var(--e3); }
   .pasos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .escala-cabeza { grid-template-columns: 1fr; }
   .zonas { grid-template-columns: 1fr; }
