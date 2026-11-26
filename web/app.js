@@ -44,7 +44,14 @@ function imagen(ruta, tamano, alt = "", { prisa = false } = {}) {
 
 function titulo(i) { return estado.catalogo[i][0]; }
 function meta(i) { const [, , anio, tipo] = estado.catalogo[i]; return [TIPO[tipo], anio].filter(Boolean).join(" · "); }
-function numero(n) { return n.toLocaleString("es-ES"); }
+// El castellano no separa los miles en números de cuatro cifras ("6580"), pero aquí se lee mejor "6.580".
+function numero(n) { return n.toLocaleString("es-ES", { useGrouping: "always" }); }
+
+/** 190 -> "3 h 10 min", 120 -> "2 h", 45 -> "45 min". */
+function horas(minutos) {
+  const h = Math.floor(minutos / 60), m = minutos % 60;
+  return [h ? `${h} h` : "", m ? `${m} min` : ""].filter(Boolean).join(" ");
+}
 
 function recortar(texto, max) {
   if (texto.length <= max) return texto;
@@ -517,7 +524,9 @@ function contarPeliculas() {
   const limite = Number(minutos.value);
   const p = ((limite - minutos.min) / (minutos.max - minutos.min)) * 100;
   minutos.style.setProperty("--p", `${p}%`);
-  $("#minutos-valor").textContent = `${limite} min`;
+  const tiempo = horas(limite);
+  $("#minutos-valor").textContent = tiempo;
+  $("#resultado-antes").textContent = `Con ${tiempo} te da tiempo a ver`;
 
   const caben = [];
   estado.catalogo.forEach(([, , , tipo, , , duracion], i) => {
@@ -528,13 +537,13 @@ function contarPeliculas() {
   const cinco = caben.filter((i) => estado.catalogo[i][4]).slice(0, 5);
 
   const explica = $("#noche-explica");
-  explica.replaceChildren(`Películas del catálogo de Netflix España que duran ${limite} minutos o menos.`);
+  explica.replaceChildren(`del catálogo de Netflix España: las que duran ${tiempo} o menos.`);
   if (cinco.length) {
     const mejor = cinco[0];
-    explica.append(" La más vista: ", crear("a", {
+    explica.append(" La más vista es ", crear("a", {
       href: `?t=${encodeURIComponent(titulo(mejor))}`, texto: titulo(mejor),
       onclick: (e) => { e.preventDefault(); elegir(mejor); },
-    }), ` (${estado.catalogo[mejor][6]} min).`);
+    }), `, que dura ${horas(estado.catalogo[mejor][6])}.`);
   }
 
   const clave = cinco.join();

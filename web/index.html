@@ -148,18 +148,22 @@
       <div class="contenedor noche-rejilla">
         <div class="noche-texto">
           <h2 id="titulo-noche" class="h2">¿Cuánto tiempo tienes?</h2>
+          <p class="noche-intro">Mueve la barra hasta el tiempo que tienes libre y te decimos cuántas películas del catálogo puedes ver enteras, sin quedarte a medias.</p>
           <div class="control">
-            <label for="minutos">Minutos libres</label>
-            <output id="minutos-valor" for="minutos">100 min</output>
+            <label for="minutos">Tengo libre</label>
+            <output id="minutos-valor" for="minutos">1 h 40 min</output>
             <input id="minutos" type="range" min="60" max="210" step="5" value="100">
             <div class="control-escala" aria-hidden="true"><span>1 h</span><span>2 h</span><span>3 h</span></div>
           </div>
-          <p class="cifra"><span id="cifra">—</span><span class="cifra-unidad">películas caben</span></p>
-          <p class="noche-explica" id="noche-explica">Películas del catálogo de Netflix España que duran eso o menos.</p>
+          <div class="resultado" aria-live="polite">
+            <p class="resultado-antes" id="resultado-antes">Con 1 h 40 min te da tiempo a ver</p>
+            <p class="cifra"><span id="cifra">—</span> <span class="cifra-unidad">películas</span></p>
+            <p class="noche-explica" id="noche-explica">Son las que duran eso o menos.</p>
+          </div>
         </div>
         <div class="abanico-marco">
-          <ul class="abanico" id="abanico" aria-label="Las más vistas que caben en tu tiempo"></ul>
-          <p class="abanico-pie">Las cinco más vistas que caben. Toca una y te decimos qué se le parece.</p>
+          <ul class="abanico" id="abanico" aria-label="Las cinco más vistas que te da tiempo a ver"></ul>
+          <p class="abanico-pie" id="abanico-pie">Las cinco más vistas de esas películas. Pulsa una y te decimos qué ver si te gusta.</p>
         </div>
       </div>
     </section>
