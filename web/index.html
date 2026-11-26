@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>¿Qué veo ahora? · Recomendaciones del catálogo de Netflix España</title>
+  <meta name="description" content="Dinos una película o serie que te encantó y te decimos qué ver ahora en el catálogo actual de Netflix España, y por qué.">
+  <meta property="og:title" content="¿Qué veo ahora?">
+  <meta property="og:description" content="Si te gustó una película o serie, te decimos qué ver ahora en Netflix España, y por qué.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#08090d">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="saltar" href="#mira">Saltar a las recomendaciones</a>
+
+  <header class="barra">
+    <nav aria-label="Secciones">
+      <a href="#mira">Recomendaciones</a>
+      <a href="#como">Cómo decide</a>
+      <a href="#noche">Esta noche</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. Portada: una pared de carteles reales del catálogo y el buscador -->
+    <section class="portada" aria-labelledby="titulo">
+      <div class="portada-fondo" aria-hidden="true"><div class="pared" id="pared"></div></div>
+      <div class="portada-velo" aria-hidden="true"></div>
+
+      <div class="portada-contenido">
+        <h1 id="titulo" class="portada-titulo">
+          <span class="palabra" style="--n:0">¿Qué</span>
+          <span class="palabra" style="--n:1">veo</span>
+          <span class="palabra" style="--n:2">esta</span>
+          <span class="palabra acento" style="--n:3">noche?</span>
+        </h1>
+        <p class="portada-apoyo">Dinos una película o serie que te encantó. Nuestro motor en Python compara su reparto, su dirección, sus géneros y sus temas con todo el catálogo de Netflix España, y te dice qué ver ahora y por qué.</p>
+
+        <form class="buscador" id="buscador" role="search" autocomplete="off">
+          <label class="solo-lectores" for="entrada">Película o serie que te gustó</label>
+          <svg class="buscador-icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="entrada" class="entrada" type="text" name="q" value="Stranger Things" spellcheck="false"
+                 placeholder="Una película o serie que te gustó"
+                 role="combobox" aria-expanded="false" aria-controls="sugerencias" aria-autocomplete="list">
+          <button class="boton" type="submit">Recomiéndame</button>
+          <ul id="sugerencias" class="sugerencias" role="listbox" aria-label="Títulos del catálogo" hidden></ul>
+        </form>
+
+        <div class="ejemplos" id="ejemplos">
+          <span>Prueba con</span>
+          <button type="button" class="chip" data-ejemplo="Breaking Bad">Breaking Bad</button>
+          <button type="button" class="chip" data-ejemplo="El juego del calamar">El juego del calamar</button>
+          <button type="button" class="chip" data-ejemplo="Interstellar">Interstellar</button>
+          <button type="button" class="chip" data-ejemplo="Miércoles">Miércoles</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. La respuesta del motor -->
+    <section id="mira" class="mira" aria-labelledby="titulo-mira">
+      <div class="contenedor">
+        <div class="mira-cabecera">
+          <div class="origen" id="origen" aria-hidden="true"></div>
+          <div class="mira-titulos">
+            <h2 id="titulo-mira" class="h2">Porque te gustó <span class="mira-nombre" id="mira-nombre">…</span></h2>
+            <p class="mira-contexto" id="contexto" aria-live="polite">Cargando el catálogo…</p>
+          </div>
+          <div class="filtro" role="radiogroup" aria-label="Qué quieres ver" style="--i:0">
+            <button type="button" role="radio" aria-checked="true" data-tipo="t">Todo</button>
+            <button type="button" role="radio" aria-checked="false" data-tipo="p">Películas</button>
+            <button type="button" role="radio" aria-checked="false" data-tipo="s">Series</button>
+          </div>
+        </div>
+        <div id="resultados" class="resultados"></div>
+      </div>
+    </section>
+
+    <!-- 3. Cómo decide: los pesos del motor, iluminados con el título actual -->
+    <section id="como" class="como" aria-labelledby="titulo-como">
+      <div class="contenedor como-rejilla">
+        <div class="como-texto">
+          <h2 id="titulo-como" class="h2">Cómo decide</h2>
+          <p class="como-intro">No mira qué ve otra gente: mira de qué está hecho cada título. Lo desmonta en piezas (géneros, temas, quién la dirige, quién sale en ella, de qué va) y busca en todo el catálogo los que comparten más piezas, y las más difíciles de compartir. Cada grupo de piezas cuenta lo que marca su peso.</p>
+
+          <div class="escala">
+            <p class="escala-titulo">Cómo leer la afinidad</p>
+            <ul>
+              <li><b>40 % o más</b><span>De la misma familia: secuelas, spin-offs, el mismo creador con el mismo reparto.</span></li>
+              <li><b>25–40 %</b><span>Muy parecida: comparten tono, temas y a menudo dirección o actores.</span></li>
+              <li><b>Menos del 25 %</b><span>Parecida en el tipo de historia. Dos títulos distintos casi nunca pasan del 60 %; el 100 % sería el mismo título.</span></li>
+            </ul>
+          </div>
+
+          <div class="en-vivo" id="en-vivo" aria-live="polite">
+            <p class="en-vivo-titulo">En tu búsqueda</p>
+            <p class="en-vivo-texto" id="en-vivo-texto">Elige un título y verás aquí qué tiene en común con su mejor recomendación.</p>
+          </div>
+        </div>
+
+        <ol class="pesos" id="pesos">
+          <li data-grupo="Géneros" style="--peso:3"><span class="peso-nombre">Géneros</span><span class="peso-valor">×3</span><span class="peso-barra"><span></span></span><span class="peso-texto">El tipo de historia: crimen, comedia, ciencia ficción.</span></li>
+          <li data-grupo="Temas" style="--peso:2"><span class="peso-nombre">Temas</span><span class="peso-valor">×2</span><span class="peso-barra"><span></span></span><span class="peso-texto">De qué va: un atraco, los años 80, un pueblo pequeño.</span></li>
+          <li data-grupo="Dirección" style="--peso:2"><span class="peso-nombre">Dirección</span><span class="peso-valor">×2</span><span class="peso-barra"><span></span></span><span class="peso-texto">Quién la dirige o, en las series, quién la creó.</span></li>
+          <li data-grupo="Reparto" style="--peso:2"><span class="peso-nombre">Reparto</span><span class="peso-valor">×2</span><span class="peso-barra"><span></span></span><span class="peso-texto">Los seis primeros nombres del reparto.</span></li>
+          <li data-grupo="Sinopsis" style="--peso:1.5"><span class="peso-nombre">Sinopsis</span><span class="peso-valor">×1,5</span><span class="peso-barra"><span></span></span><span class="peso-texto">Las palabras que importan del argumento, con NLTK.</span></li>
+          <li data-grupo="País" style="--peso:1"><span class="peso-nombre">País</span><span class="peso-valor">×1</span><span class="peso-barra"><span></span></span><span class="peso-texto">Dónde se produjo.</span></li>
+          <li data-grupo="Resto" style="--peso:1.25"><span class="peso-nombre">Edad y formato</span><span class="peso-valor">×1,25</span><span class="peso-barra"><span></span></span><span class="peso-texto">Edad recomendada y si es película o serie.</span></li>
+        </ol>
+
+        <ol class="pasos" aria-label="Los cuatro pasos del motor">
+          <li>
+            <h3>Desmonta cada título</h3>
+            <p>Con <code>pandas</code>, <code>re</code> y <code>nltk</code> convierte su ficha en etiquetas: «crimen», «años 80», «Vince Gilligan», «Bryan Cranston». De la sinopsis quita las palabras vacías y deja la raíz de las demás («luchan» → «luch»).</p>
+          </li>
+          <li>
+            <h3>Pesa lo raro</h3>
+            <p>Compartir algo que tienen pocos títulos dice mucho más que compartir algo común: el mismo director vale más que ser los dos «Drama». Las etiquetas que no tiene ningún otro título se descartan, porque nunca podrían coincidir.</p>
+          </li>
+          <li>
+            <h3>Compara de dos maneras</h3>
+            <p>Mide cuánto se parecen sus vectores completos con <code>numpy</code> (similitud del coseno) y en cuántos aspectos coinciden, grupo a grupo. La afinidad es la media de las dos: solo puntúa alto lo que se parece en lo raro y en lo general.</p>
+          </li>
+          <li>
+            <h3>Desempata y lo deja listo</h3>
+            <p>Entre dos igual de parecidos, sube un poco el más visto y mejor valorado. Calcula las diez mejores de cada título de antemano y lo repite el día 1 de cada mes con el catálogo nuevo.</p>
+          </li>
+        </ol>
+
+        <dl class="cifras" id="cifras">
+          <div><dt>títulos comparados</dt><dd data-cuenta="0">—</dd></div>
+          <div><dt>películas</dt><dd data-cuenta="0">—</dd></div>
+          <div><dt>series</dt><dd data-cuenta="0">—</dd></div>
+          <div><dt>segundos para precalcularlo todo</dt><dd data-cuenta="14">14</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- 4. El tiempo que tienes -->
+    <section id="noche" class="noche" aria-labelledby="titulo-noche">
+      <div class="contenedor noche-rejilla">
+        <div class="noche-texto">
+          <h2 id="titulo-noche" class="h2">¿Cuánto tiempo tienes?</h2>
+          <div class="control">
+            <label for="minutos">Minutos libres</label>
+            <output id="minutos-valor" for="minutos">100 min</output>
+            <input id="minutos" type="range" min="60" max="210" step="5" value="100">
+            <div class="control-escala" aria-hidden="true"><span>1 h</span><span>2 h</span><span>3 h</span></div>
+          </div>
+          <p class="cifra"><span id="cifra">—</span><span class="cifra-unidad">películas caben</span></p>
+          <p class="noche-explica" id="noche-explica">Películas del catálogo de Netflix España que duran eso o menos.</p>
+        </div>
+        <div class="abanico-marco">
+          <ul class="abanico" id="abanico" aria-label="Las más vistas que caben en tu tiempo"></ul>
+          <p class="abanico-pie">Las cinco más vistas que caben. Toca una y te decimos qué se le parece.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="cierre">
+    <div class="contenedor">
+      <div class="cierre-arriba">
+        <div>
+          <h2 class="h2 cierre-invita">¿Otra noche sin plan?</h2>
+          <a class="boton" href="#titulo" id="otra-vez">Busca otro título</a>
+        </div>
+        <ul class="cierre-enlaces">
+          <li><a href="https://www.themoviedb.org/" rel="noopener">The Movie Database</a></li>
+          <li><a href="https://www.justwatch.com/es" rel="noopener">JustWatch</a></li>
+          <li><a href="#como">Cómo decide</a></li>
+        </ul>
+      </div>
+      <div class="cierre-legal">
+        <p>Datos e imágenes de TMDB, disponibilidad de JustWatch. Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB. No está afiliado a Netflix.</p>
+        <p id="actualizado">Catálogo actualizado</p>
+      </div>
+    </div>
+  </footer>
+
+  <dialog id="ficha" class="ficha" aria-labelledby="ficha-titulo">
+    <div class="ficha-fondo" id="ficha-fondo"></div>
+    <div class="ficha-cuerpo">
+      <div class="ficha-cartel" id="ficha-cartel"></div>
+      <div class="ficha-info">
+        <h2 id="ficha-titulo" class="ficha-titulo"></h2>
+        <p id="ficha-meta" class="ficha-meta"></p>
+        <ul id="ficha-motivos" class="motivos"></ul>
+        <p id="ficha-sinopsis" class="ficha-sinopsis"></p>
+        <dl id="ficha-datos" class="ficha-datos"></dl>
+        <div class="ficha-acciones">
+          <button type="button" class="boton" id="ficha-partir">Recomiéndame a partir de este</button>
+          <a id="ficha-tmdb" class="enlace" href="#" rel="noopener" target="_blank">Ficha completa en TMDB</a>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="ficha-cerrar" id="ficha-cerrar" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </dialog>
+
+  <noscript><p class="sin-js">Esta página necesita JavaScript para buscar en el catálogo.</p></noscript>
+</body>
+</html>

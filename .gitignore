@@ -1,0 +1,21 @@
+# Entorno virtual y cachés de Python
+.venv/
+__pycache__/
+*.pyc
+
+# El catálogo se descarga con descargar_catalogo.py (no se sube al repositorio)
+data/*.csv
+
+.DS_Store
+
+# Clave de la API de TMDb (nunca se sube)
+.env
+
+# Datos de la web: se generan con exportar_web.py (21 MB)
+web/datos/
+
+# Herramientas locales
+.taste-skill/
+.claude/
+.wrangler/
+.impeccable/hook.cache.json

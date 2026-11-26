@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "oversized-h1",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-26T07:24:29.785Z",
+        "reason": "Claude: el h1 visible son 3 palabras (SI TE GUSTÓ); el resto es texto solo para lectores de pantalla"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-26T07:48:42.443Z",
+        "reason": "Claude: static measurement before CSS loads; in the browser h1 75px, h2 44px, body 17px"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-26T07:48:50.637Z",
+        "reason": "Claude: the only finding is the top of dialog#ficha, a full-bleed backdrop image by design; the text has 48px of padding"
+      }
+    ]
+  }
+}

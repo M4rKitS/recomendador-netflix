@@ -1,0 +1,84 @@
+# Actualiza la web cada mes: descarga el catálogo actual de Netflix España desde TMDb,
+# recalcula todas las recomendaciones con el motor en Python y publica en Cloudflare Pages.
+#
+# Secretos necesarios (Settings → Secrets and variables → Actions):
+#   TMDB_API_KEY            clave o token de lectura de la API de TMDb
+#   CLOUDFLARE_API_TOKEN    token con permiso «Cloudflare Pages: Edit»
+#   CLOUDFLARE_ACCOUNT_ID   identificador de la cuenta de Cloudflare
+
+name: Actualizar la web
+
+on:
+  schedule:
+    - cron: "0 5 1 * *"   # el día 1 de cada mes a las 05:00 UTC
+  workflow_dispatch:       # y a mano, desde la pestaña Actions
+
+permissions:
+  contents: write   # solo para el commit mensual de ULTIMA_ACTUALIZACION.md
+
+concurrency:
+  group: actualizar-web
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          python -m nltk.downloader -q stopwords
+
+      - name: Pruebas del motor
+        run: python -m unittest discover -s tests -t .
+
+      - name: Descargar el catálogo actual de TMDb
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: python -u descargar_catalogo.py
+
+      - name: Comprobar que el catálogo está completo
+        # Si TMDb falla a medias, mejor no publicar que publicar un catálogo cojo.
+        run: |
+          python - <<'EOF'
+          import csv, sys
+          with open("data/catalogo_netflix_es.csv", encoding="utf-8") as f:
+              total = sum(1 for _ in csv.DictReader(f))
+          print(f"{total} títulos descargados")
+          if total < 5000:
+              sys.exit("El catálogo parece incompleto: no se publica.")
+          EOF
+
+      - name: Precalcular las recomendaciones
+        run: python -u exportar_web.py
+
+      - name: Publicar en Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web --project-name=queveoahora --branch=main --commit-dirty=true
+
+      - name: Anotar la actualización en el repositorio
+        # GitHub desactiva las tareas programadas de un repositorio sin actividad en 60 días;
+        # este pequeño commit mensual lo mantiene vivo y deja constancia de cada actualización.
+        run: |
+          python - <<'EOF' > ULTIMA_ACTUALIZACION.md
+          import json
+          datos = json.load(open("web/datos/catalogo.json", encoding="utf-8"))
+          print(f"Última actualización del catálogo: {datos['actualizado']} ({len(datos['titulos'])} títulos).")
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ULTIMA_ACTUALIZACION.md
+          git diff --cached --quiet || git commit -m "chore(datos): actualiza el catálogo de Netflix España"
+          git push
