@@ -438,6 +438,7 @@ function explicar(origen, primera, datos) {
   const caja = $("#en-vivo-texto");
   const coinciden = new Set((datos?.[1] ?? []).map(([n]) => GRUPO[n]));
   $$("#pesos li").forEach((li) => li.classList.toggle("coincide", coinciden.has(li.dataset.grupo)));
+  marcarEscala(datos?.[0]);
   if (!datos) { caja.textContent = "Elige un título y verás aquí qué tiene en común con su mejor recomendación."; return; }
   const [afinidad, motivos] = datos;
   const partes = motivos.map(([n, v]) => `${n.toLowerCase()} (${v.join(", ")})`);
@@ -449,10 +450,17 @@ function explicar(origen, primera, datos) {
 }
 
 /** Lectura en palabras de un porcentaje de afinidad (la misma escala que explica la web). */
-function nivel(afinidad) {
-  if (afinidad >= 40) return "de la misma familia";
-  if (afinidad >= 25) return "muy parecida";
-  return "parecida en el tipo de historia";
+function zona(afinidad) { return afinidad >= 40 ? 3 : afinidad >= 25 ? 2 : 1; }
+function nivel(afinidad) { return ["del mismo estilo", "muy parecida", "de la misma familia"][zona(afinidad) - 1]; }
+
+/** Lleva la marca del medidor a la afinidad de la mejor recomendación e ilumina su zona. */
+function marcarEscala(afinidad) {
+  const escala = $("#escala");
+  const hay = Number.isFinite(afinidad);
+  escala.classList.toggle("con-valor", hay);
+  escala.style.setProperty("--valor", hay ? afinidad : 0);
+  if (hay) $("#medidor-texto").textContent = `Tu búsqueda · ${afinidad} %`;
+  $$("#escala .zonas li").forEach((li) => li.classList.toggle("activa", hay && Number(li.dataset.zona) === zona(afinidad)));
 }
 
 /* ---------- Filtro Todo / Películas / Series ---------- */
@@ -564,7 +572,7 @@ minutos.addEventListener("input", contarPeliculas);
 /* ---------- Entradas al hacer scroll ---------- */
 
 function revelar() {
-  const piezas = $$(".como-texto, .pesos, .cifras, .noche-texto, .abanico-marco, .cierre-arriba");
+  const piezas = $$(".como-texto, .pesos, .escala, .pasos, .cifras, .noche-texto, .abanico-marco, .cierre-arriba");
   if (!("IntersectionObserver" in window)) { piezas.forEach((p) => p.classList.add("visible")); return; }
   const observador = new IntersectionObserver((entradas) => {
     entradas.forEach((e) => {
@@ -574,7 +582,8 @@ function revelar() {
       observador.unobserve(e.target);
     });
   }, { threshold: 0.2 });
-  piezas.forEach((p) => { if (p.id !== "pesos") p.classList.add("revela"); observador.observe(p); });
+  // Pesos y pasos entran pieza a pieza (en el CSS), no como un bloque.
+  piezas.forEach((p) => { if (!p.matches(".pesos, .pasos")) p.classList.add("revela"); observador.observe(p); });
 }
 
 /* ---------- Arranque ---------- */

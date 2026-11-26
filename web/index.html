@@ -90,15 +90,6 @@
           <h2 id="titulo-como" class="h2">Cómo decide</h2>
           <p class="como-intro">No mira qué ve otra gente: mira de qué está hecho cada título. Lo desmonta en piezas (géneros, temas, quién la dirige, quién sale en ella, de qué va) y busca en todo el catálogo los que comparten más piezas, y las más difíciles de compartir. Cada grupo de piezas cuenta lo que marca su peso.</p>
 
-          <div class="escala">
-            <p class="escala-titulo">Cómo leer la afinidad</p>
-            <ul>
-              <li><b>40 % o más</b><span>De la misma familia: secuelas, spin-offs, el mismo creador con el mismo reparto.</span></li>
-              <li><b>25–40 %</b><span>Muy parecida: comparten tono, temas y a menudo dirección o actores.</span></li>
-              <li><b>Menos del 25 %</b><span>Parecida en el tipo de historia. Dos títulos distintos casi nunca pasan del 60 %; el 100 % sería el mismo título.</span></li>
-            </ul>
-          </div>
-
           <div class="en-vivo" id="en-vivo" aria-live="polite">
             <p class="en-vivo-titulo">En tu búsqueda</p>
             <p class="en-vivo-texto" id="en-vivo-texto">Elige un título y verás aquí qué tiene en común con su mejor recomendación.</p>
@@ -114,6 +105,41 @@
           <li data-grupo="País" style="--peso:1"><span class="peso-nombre">País</span><span class="peso-valor">×1</span><span class="peso-barra"><span></span></span><span class="peso-texto">Dónde se produjo.</span></li>
           <li data-grupo="Resto" style="--peso:1.25"><span class="peso-nombre">Edad y formato</span><span class="peso-valor">×1,25</span><span class="peso-barra"><span></span></span><span class="peso-texto">Edad recomendada y si es película o serie.</span></li>
         </ol>
+
+        <div class="escala" id="escala" style="--valor:0">
+          <div class="escala-cabeza">
+            <h3 class="escala-titulo">Cómo leer la afinidad</h3>
+            <p class="escala-texto">El porcentaje dice cuánto se parecen dos títulos, de 0 a 100. El 100 % sería el mismo título, así que dos títulos distintos casi nunca pasan del 60 %.</p>
+          </div>
+
+          <div class="medidor" aria-hidden="true">
+            <div class="medidor-pista">
+              <span class="medidor-zona" data-zona="1"></span>
+              <span class="medidor-zona" data-zona="2"></span>
+              <span class="medidor-zona" data-zona="3"></span>
+            </div>
+            <div class="medidor-marca" id="medidor-marca"><span id="medidor-texto">Tu búsqueda</span></div>
+            <div class="medidor-ticks"><span style="--t:0">0 %</span><span style="--t:25">25 %</span><span style="--t:40">40 %</span><span style="--t:60">60 %</span><span style="--t:100">100 %</span></div>
+          </div>
+
+          <ol class="zonas">
+            <li data-zona="1">
+              <p class="zona-cifra">Menos del 25 %</p>
+              <p class="zona-nombre">Del mismo estilo</p>
+              <p class="zona-texto">Comparten el tipo de historia y algún tema. Buenas para descubrir algo distinto.</p>
+            </li>
+            <li data-zona="2">
+              <p class="zona-cifra">25–40 %</p>
+              <p class="zona-nombre">Muy parecida</p>
+              <p class="zona-texto">Mismo tono y mismos temas, y a menudo la misma dirección o parte del reparto.</p>
+            </li>
+            <li data-zona="3">
+              <p class="zona-cifra">40 % o más</p>
+              <p class="zona-nombre">De la misma familia</p>
+              <p class="zona-texto">Secuelas, spin-offs o el mismo creador con el mismo reparto.</p>
+            </li>
+          </ol>
+        </div>
 
         <ol class="pasos" aria-label="Los cuatro pasos del motor">
           <li>
