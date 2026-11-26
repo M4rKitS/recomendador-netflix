@@ -122,7 +122,8 @@ Para actualizarla a mano: `descargar_catalogo.py` → `exportar_web.py` → volv
 ### Actualización automática cada mes
 
 `.github/workflows/actualizar-web.yml` lo hace solo el **día 1 de cada mes** (y cuando quieras,
-con *Run workflow* en la pestaña *Actions* de GitHub):
+con *Run workflow* en la pestaña *Actions* de GitHub). También se lanza sola cada vez que se
+sube un cambio de la web (`web/`) o del motor (`*.py`), así que un arreglo se publica sin tocar nada:
 
 1. Instala las dependencias y pasa las pruebas del motor.
 2. Descarga el catálogo actual de Netflix España desde TMDb.
