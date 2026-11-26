@@ -755,6 +755,11 @@ a { color: inherit; }
   .pasos { grid-template-columns: 1fr; }
   .medidor-ticks span:nth-child(3), .medidor-ticks span:nth-child(4) { font-size: .6875rem; }
   .pesos li { grid-template-columns: 1fr auto; grid-template-areas: "nombre valor" "barra barra" "texto texto"; row-gap: .5rem; padding-inline: .75rem; }
+  .escala { padding-inline: var(--e2); }
+  .zonas li { padding: var(--e2) var(--e3); }
+  .zonas li.activa .zona-nombre::after { content: "Tu búsqueda"; display: block; margin-top: .125rem; font-size: var(--t-pequeno); }
+  .pasos li { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: var(--e2); align-items: start; }
+  .pasos li::before { grid-row: span 2; margin: 0; font-size: 2rem; }
 }
 
 /* ---------- Esta noche ---------- */
