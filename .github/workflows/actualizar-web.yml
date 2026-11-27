@@ -12,6 +12,11 @@ on:
   schedule:
     - cron: "0 5 1 * *"   # el día 1 de cada mes a las 05:00 UTC
   workflow_dispatch:       # y a mano, desde la pestaña Actions
+    inputs:
+      forzar:
+        description: "Publicar aunque el catálogo tenga más de un 5 % menos de títulos"
+        type: boolean
+        default: false
   push:                    # y cada vez que se sube un cambio de la web o del motor
     branches: [main]
     paths:
@@ -53,16 +58,9 @@ jobs:
         run: python -u descargar_catalogo.py
 
       - name: Comprobar que el catálogo está completo
-        # Si TMDb falla a medias, mejor no publicar que publicar un catálogo cojo.
-        run: |
-          python - <<'EOF'
-          import csv, sys
-          with open("data/catalogo_netflix_es.csv", encoding="utf-8") as f:
-              total = sum(1 for _ in csv.DictReader(f))
-          print(f"{total} títulos descargados")
-          if total < 5000:
-              sys.exit("El catálogo parece incompleto: no se publica.")
-          EOF
+        # Si TMDb falla a medias, mejor no publicar que publicar un catálogo cojo: la web se
+        # queda como estaba. Para si hay menos de 5.000 títulos o un 5 % menos que la última vez.
+        run: python comprobar_catalogo.py ${{ inputs.forzar && '--forzar' || '' }}
 
       - name: Precalcular las recomendaciones
         run: python -u exportar_web.py
