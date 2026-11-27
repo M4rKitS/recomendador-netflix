@@ -28,6 +28,21 @@ class TestComprobarCatalogo(unittest.TestCase):
             self.assertEqual(titulos_anteriores(ruta), 9886)
             self.assertIsNone(titulos_anteriores(Path(carpeta) / "no-existe.md"))
 
+    def test_lee_cada_pais_por_separado(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = Path(carpeta) / "ULTIMA_ACTUALIZACION.md"
+            ruta.write_text("Última actualización del catálogo: 2026-12-01.\n\n"
+                            "- Netflix España: 9850 títulos.\n- Netflix USA: 7123 títulos.\n", encoding="utf-8")
+            self.assertEqual(titulos_anteriores(ruta, "ES"), 9850)
+            self.assertEqual(titulos_anteriores(ruta, "US"), 7123)
+
+    def test_pais_nuevo_sin_dato_anterior(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = Path(carpeta) / "ULTIMA_ACTUALIZACION.md"
+            ruta.write_text("Última actualización del catálogo: 2026-11-27 (9110 títulos).\n", encoding="utf-8")
+            self.assertEqual(titulos_anteriores(ruta, "ES"), 9110)
+            self.assertIsNone(titulos_anteriores(ruta, "US"))
+
 
 if __name__ == "__main__":
     unittest.main()

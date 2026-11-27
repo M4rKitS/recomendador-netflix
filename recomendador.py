@@ -477,10 +477,13 @@ def _dividir(a, b):
         return np.where(b > 0, a / b, 0.0)
 
 
-def buscar_csv(carpeta):
-    """CSV que usará la aplicación: el catálogo de TMDb más reciente o, si no hay,
-    cualquier otro CSV de la carpeta data/ (p. ej. el dataset de Kaggle)."""
+def buscar_csv(carpeta, pais="es"):
+    """CSV que usará la aplicación: el catálogo de Netflix del país (España por defecto),
+    si no, el catálogo de TMDb más reciente o cualquier otro CSV de la carpeta data/
+    (p. ej. el dataset de Kaggle)."""
     carpeta = Path(carpeta)
+    if (carpeta / f"catalogo_netflix_{pais}.csv").exists():
+        return carpeta / f"catalogo_netflix_{pais}.csv"
     por_fecha = lambda rutas: sorted(rutas, key=lambda r: r.stat().st_mtime, reverse=True)
     csvs = por_fecha(carpeta.glob("catalogo_netflix_*.csv")) or por_fecha(carpeta.glob("*.csv"))
     return csvs[0] if csvs else None

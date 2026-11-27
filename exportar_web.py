@@ -4,14 +4,19 @@ La web es estática (Cloudflare Pages, sin servidor): no puede ejecutar Python. 
 motor calcula aquí, de una vez, las recomendaciones de cada título del catálogo y la web
 solo tiene que leerlas.
 
-Genera en web/datos/:
+Genera en web/datos/<país>/:
 - catalogo.json      lista ligera de todos los títulos (buscador, carteles, minutos).
 - fichas/NNN.json    detalle y recomendaciones, en bloques de 100 títulos para que la
                      web descargue solo el bloque que necesita.
 
+Hay una web por país: la española (Netflix España) y la inglesa (Netflix USA, en /en/).
+
 Uso:
-    python exportar_web.py
+    python exportar_web.py            # Netflix España -> web/datos/es/
+    python exportar_web.py --pais US  # Netflix USA    -> web/datos/us/
 """
+
+import argparse
 
 import json
 import re
@@ -23,17 +28,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from recomendador import Recomendador, buscar_csv
+from recomendador import Recomendador
 
 CARPETA = Path(__file__).parent
-SALIDA = CARPETA / "web" / "datos"
 POR_BLOQUE = 100
 VOTOS_PARA_NOTA = 20  # con menos votos, la nota no se muestra: no es fiable
 RECOMENDACIONES = 12  # por cada lista: todo, películas y series
 TIPOS = {"Movie": "p", "TV Show": "s"}
+# Cómo se llama cada motivo en la web de cada país (en las series, el director es quien la creó).
 NOMBRES_MOTIVO = {
-    "director": ("Dirección", "Creación"), "reparto": ("Reparto",), "temas": ("Temas",),
-    "generos": ("Géneros",), "pais": ("País",),
+    "ES": {"director": ("Dirección", "Creación"), "reparto": ("Reparto",), "temas": ("Temas",),
+           "generos": ("Géneros",), "pais": ("País",)},
+    "US": {"director": ("Director", "Creator"), "reparto": ("Cast",), "temas": ("Themes",),
+           "generos": ("Genres",), "pais": ("Country",)},
 }
 
 
@@ -54,14 +61,14 @@ def nota_publica(fila):
     return round(float(fila["nota"]), 1)
 
 
-def motivos(motor, origen, j):
+def motivos(motor, origen, j, etiquetas):
     """Las tres razones más fuertes por las que j se parece a origen, en orden de peso."""
     rec = motor._crear_recomendacion(origen, j, 0)
     es_serie = motor.datos.at[j, "tipo"] == "TV Show"
     salida = []
     for grupo in ("director", "reparto", "temas", "generos", "pais"):
         if grupo in rec.coincidencias:
-            nombres = NOMBRES_MOTIVO[grupo]
+            nombres = etiquetas[grupo]
             etiqueta = nombres[1] if grupo == "director" and es_serie and len(nombres) > 1 else nombres[0]
             salida.append([etiqueta, rec.coincidencias[grupo][:3]])
         if len(salida) == 3:
@@ -70,7 +77,15 @@ def motivos(motor, origen, j):
 
 
 def main():
-    ruta = buscar_csv(CARPETA / "data")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--pais", default="ES", choices=sorted(NOMBRES_MOTIVO), type=str.upper)
+    args = parser.parse_args()
+    pais = args.pais
+    ruta = CARPETA / "data" / f"catalogo_netflix_{pais.lower()}.csv"
+    if not ruta.exists():
+        raise SystemExit(f"Falta {ruta.relative_to(CARPETA)}: descárgalo con descargar_catalogo.py --pais {pais}.")
+    salida = CARPETA / "web" / "datos" / pais.lower()
+    etiquetas = NOMBRES_MOTIVO[pais]
     print(f"Cargando {ruta.name}…")
     motor = Recomendador.desde_csv(ruta)
     datos = motor.datos
@@ -78,9 +93,9 @@ def main():
     tmdb = [texto(v).split(".")[0] for v in datos["tmdb_id"]]
     duraciones = [texto(v) for v in datos["duracion"]]
 
-    if SALIDA.exists():
-        shutil.rmtree(SALIDA)
-    (SALIDA / "fichas").mkdir(parents=True)
+    if salida.exists():
+        shutil.rmtree(salida)
+    (salida / "fichas").mkdir(parents=True)
 
     # --- catalogo.json -------------------------------------------------------- #
     titulos = []
@@ -98,11 +113,11 @@ def main():
         ])
     catalogo = {
         "actualizado": date.fromtimestamp(ruta.stat().st_mtime).isoformat(),
-        "pais": "ES",
+        "pais": pais,
         "columnas": ["titulo", "alias", "anio", "tipo", "poster", "votos", "minutos", "nota"],
         "titulos": titulos,
     }
-    (SALIDA / "catalogo.json").write_text(json.dumps(catalogo, ensure_ascii=False, separators=(",", ":")))
+    (salida / "catalogo.json").write_text(json.dumps(catalogo, ensure_ascii=False, separators=(",", ":")))
 
     # --- fichas/NNN.json ------------------------------------------------------ #
     es_peli = (datos["tipo"] == "Movie").to_numpy()
@@ -122,7 +137,7 @@ def main():
         for j in dict.fromkeys(listas["t"] + listas["p"] + listas["s"]):
             # [afinidad en %, motivos, 1 si la comunidad de TMDb también lo recomienda]
             recomendados[j] = [
-                round(min(float(afinidad[j]), 1.0) * 100), motivos(motor, i, j), int(j in motor.publico[i]),
+                round(min(float(afinidad[j]), 1.0) * 100), motivos(motor, i, j, etiquetas), int(j in motor.publico[i]),
             ]
 
         fila = datos.iloc[i]
@@ -141,14 +156,14 @@ def main():
         }
         if (i + 1) % POR_BLOQUE == 0 or i == len(datos) - 1:
             numero = i // POR_BLOQUE
-            (SALIDA / "fichas" / f"{numero:03d}.json").write_text(
+            (salida / "fichas" / f"{numero:03d}.json").write_text(
                 json.dumps(bloque, ensure_ascii=False, separators=(",", ":"))
             )
             bloque = {}
             print(f"\r  {i + 1}/{len(datos)} títulos ({time.time() - inicio:.0f} s)", end="", flush=True)
 
-    total = sum(f.stat().st_size for f in SALIDA.rglob("*.json")) / 1e6
-    print(f"\nListo: {len(datos)} títulos exportados a {SALIDA.relative_to(CARPETA)} ({total:.1f} MB).")
+    total = sum(f.stat().st_size for f in salida.rglob("*.json")) / 1e6
+    print(f"\nListo: {len(datos)} títulos exportados a {salida.relative_to(CARPETA)} ({total:.1f} MB).")
 
 
 if __name__ == "__main__":
