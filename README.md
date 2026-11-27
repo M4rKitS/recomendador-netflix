@@ -1,223 +1,230 @@
-# Recomendador de Netflix
+# 🍿 ¿Qué veo ahora? · Recomendador de Netflix con Python
 
-Aplicación de escritorio en Python que recomienda películas y series del catálogo **actual** de
-Netflix España, descargado de la API de TMDb.
-Escribes un título que te haya gustado y te propone otros parecidos, explicando por qué
-(mismo director, actores en común, géneros, país…).
+**Dime una película o serie que te encantó y te digo qué ver esta noche en Netflix España, y por qué.**
 
-Tiene dos interfaces: una aplicación de escritorio con `tkinter` y una **web pública,
-«¿Qué veo ahora?»**, pensada para Cloudflare Pages.
+[![Web en línea](https://img.shields.io/badge/web-queveoahora.pages.dev-ffd166?style=for-the-badge)](https://queveoahora.pages.dev)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Actualización](https://img.shields.io/badge/cat%C3%A1logo-se%20actualiza%20solo%20cada%20mes-2ea44f?style=for-the-badge)
 
-Proyecto de portfolio del módulo de Python del Máster Full Stack de Conquer Blocks.
+👉 **Pruébala en https://queveoahora.pages.dev**
 
-## Tecnologías
+![Portada de la web: una pared de carteles del catálogo con el buscador encima](docs/portada.jpg)
 
-| Módulo | Para qué se usa |
+Proyecto de portfolio del módulo de Python avanzado del **Máster Full Stack de Conquer Blocks**.
+
+---
+
+## 🎯 Qué problema resuelve
+
+Todos hemos pasado veinte minutos bajando por Netflix sin decidirnos por nada. Esta app parte
+de algo que ya sabes (una película o serie que te gustó) y busca en **el catálogo real y actual
+de Netflix España** (unos 9.900 títulos) los que más se le parecen.
+
+Cada recomendación lleva:
+
+- un **porcentaje de afinidad** con una escala que explica qué significa;
+- los **motivos concretos**: mismo director, actores en común, temas o géneros compartidos;
+- su ficha con sinopsis, reparto y nota.
+
+No usa valoraciones de otros usuarios ni ninguna caja negra: es un **recomendador basado en
+contenido** escrito desde cero con `pandas`, `numpy`, `re` y `nltk`, y la web enseña en directo
+cómo ha decidido.
+
+## ✨ Qué puedes hacer en la web
+
+| | |
 |---|---|
-| `tkinter` | Interfaz gráfica: buscador con sugerencias, botones, tabla de resultados y ficha de detalle |
-| `pandas` | Leer el CSV y limpiar los datos |
-| `numpy` | Calcular las puntuaciones de similitud de todo el catálogo a la vez |
+| ![Recomendaciones para Breaking Bad](docs/recomendaciones.jpg) | **Recomendaciones explicadas.** La más parecida en grande y diez más con su afinidad y sus motivos. Se pueden filtrar por películas o series, y cada resultado sirve como nueva búsqueda. La luz ambiente de la página toma el color del cartel que eliges. |
+| ![Sección Cómo decide con el medidor de afinidad](docs/como-decide.jpg) | **Cómo decide.** Ilumina los grupos (géneros, temas, dirección, reparto…) en los que coinciden de verdad tu título y la primera recomendación, y sitúa tu búsqueda en un medidor que explica cómo leer el porcentaje. |
+
+- 🔎 **Buscador tolerante**: no importan mayúsculas ni acentos, y entiende el título original o
+  el inglés («Money Heist» encuentra «La casa de papel»).
+- 🌙 **«Esta noche»**: mueves una barra con el tiempo libre que tienes y te dice cuántas películas
+  del catálogo te da tiempo a ver, con las cinco más populares en abanico.
+- 🔗 **Enlaces para compartir**: `https://queveoahora.pages.dev/?t=Breaking Bad` abre directamente
+  las recomendaciones de ese título.
+- 📱 **Pensada también para el móvil**, accesible con teclado y respetuosa con quien prefiere
+  menos animaciones.
+
+<p align="center">
+  <img src="docs/movil.jpg" alt="La portada en el móvil" width="260">
+  &nbsp;&nbsp;
+  <img src="docs/movil-resultado.jpg" alt="Recomendaciones de El juego del calamar en el móvil" width="260">
+</p>
+
+## 🏗️ Cómo está construida
+
+```mermaid
+flowchart LR
+    A[API de TMDb<br/>+ JustWatch] -->|descargar_catalogo.py| B[(Catálogo CSV<br/>~9.900 títulos)]
+    B -->|recomendador.py<br/>pandas · re · nltk · numpy| C[Motor de<br/>recomendación]
+    C -->|app.py| D[App de escritorio<br/>tkinter]
+    C -->|exportar_web.py| E[(JSON precalculado<br/>catálogo + fichas)]
+    E --> F[Web estática<br/>HTML · CSS · JS]
+    F -->|Cloudflare Pages| G((queveoahora.pages.dev))
+    H[GitHub Actions<br/>día 1 de cada mes] -.->|repite todo y publica| A
+```
+
+### ⚙️ Backend: el motor en Python
+
+**1. Datos reales y actuales.** Los datasets de Netflix de Kaggle se quedaron en 2021, así que
+`descargar_catalogo.py` genera su propio catálogo con la API de TMDb, que sabe qué hay en
+Netflix en cada país gracias a JustWatch. De cada título descarga sinopsis, géneros, palabras
+clave, país, reparto, dirección (o creadores, en las series), clasificación por edades y nota.
+Usa varias peticiones en paralelo (`concurrent.futures`) y reintentos. Si falta la sinopsis en
+castellano usa la inglesa, y los títulos en otros alfabetos (오징어 게임) se cambian por su
+título en inglés.
+
+**2. Limpieza.** Con `pandas` y `re`, cada título se convierte en grupos de etiquetas. Con
+`nltk`, las sinopsis pierden las palabras vacías y cada palabra se reduce a su raíz
+(`luchan` → `luch`). El idioma de cada sinopsis se detecta solo.
+
+**3. Rareza de cada etiqueta (TF-IDF).** Compartir algo raro informa más que compartir algo
+común: el mismo director pesa mucho más que ser ambos «Drama». Las etiquetas que solo tiene un
+título se descartan, porque nunca pueden coincidir y solo rebajarían todas sus afinidades.
+
+**4. Pesos por grupo.** Cada etiqueta vale *peso de su grupo × rareza*:
+
+| Grupo | Peso | | Grupo | Peso |
+|---|---|---|---|---|
+| Géneros | 3 | | Palabras de la sinopsis | 1,5 |
+| Temas (palabras clave de TMDb) | 2 | | País | 1 |
+| Dirección | 2 | | Clasificación por edades | 0,75 |
+| Reparto (seis primeros) | 2 | | Tipo (película o serie) | 0,5 |
+
+**5. Afinidad: dos medidas en una.** El motor calcula con `numpy`:
+
+- el **coseno** entre los vectores completos, que premia compartir lo raro;
+- la **afinidad por aspectos**: cuánto se parecen grupo a grupo (sus géneros, su reparto…),
+  en media ponderada por los pesos.
+
+La afinidad final es la **media geométrica** de las dos, así que solo puntúa alto lo que destaca
+en ambas. Con el coseno solo, la mejor recomendación de un título rondaba el 15 %; ahora ronda
+el 36 %, con las mismas listas (las secuelas y spin-offs siguen arriba). Para que se entienda,
+la web usa esta escala:
+
+| Afinidad | Qué significa |
+|---|---|
+| **40 % o más** | De la misma familia: secuelas, spin-offs, mismo creador y reparto |
+| **25–40 %** | Muy parecida: mismo tono y temas, a menudo la misma dirección |
+| **Menos del 25 %** | Del mismo estilo: buena para descubrir algo distinto |
+
+**6. Rápido.** Un **índice invertido** (etiqueta → títulos que la tienen) compara un título
+contra todo el catálogo en un milisegundo. Al final, entre títulos igual de parecidos se
+prefieren los más populares (hasta un 15 % extra) y los mejor valorados (hasta un 3 %).
+
+Los pesos están en el diccionario `PESOS` de `recomendador.py` y se pueden ajustar.
+
+### 🎨 Frontend: la web
+
+- **HTML, CSS y JavaScript puros**, sin frameworks ni dependencias.
+- **Sin servidor.** Cloudflare Pages no ejecuta Python, así que `exportar_web.py` precalcula
+  las recomendaciones de los ~9.900 títulos en unos 15 segundos. Las guarda en JSON (el
+  catálogo más 99 bloques de fichas) y la web solo descarga el bloque que necesita.
+- **Diseño de sala de cine**: pared de carteles en 3D en la portada, luz ambiente que toma el
+  color del cartel elegido, medidor animado con `@property` de CSS y entradas al hacer scroll
+  con `IntersectionObserver`.
+- **Accesible**: navegable con teclado, textos alternativos, contraste suficiente y
+  `prefers-reduced-motion` respetado.
+
+### 🤖 Automatización: se actualiza sola
+
+[`.github/workflows/actualizar-web.yml`](.github/workflows/actualizar-web.yml) se ejecuta el
+**día 1 de cada mes**. También se lanza cuando se sube un cambio a la web o al motor, y a mano
+desde la pestaña *Actions*:
+
+1. Instala las dependencias y pasa las **pruebas** del motor.
+2. Descarga el catálogo actual de Netflix España.
+3. **Comprueba que está completo**: si TMDb falla a medias, no publica nada.
+4. Precalcula todas las recomendaciones.
+5. Publica en **Cloudflare Pages** con Wrangler.
+6. Anota la fecha en [`ULTIMA_ACTUALIZACION.md`](ULTIMA_ACTUALIZACION.md) con un pequeño commit.
+
+Las claves (TMDb y Cloudflare) se guardan como **secretos de GitHub** y nunca se suben al código.
+
+## 🧰 Tecnologías
+
+| Herramienta | Para qué se usa |
+|---|---|
+| `pandas` | Leer el catálogo y limpiar los datos |
+| `numpy` | Calcular las afinidades de todo el catálogo a la vez |
 | `re` | Limpiar texto y separar listas (`"Dramas, Comedies"` → `["dramas", "comedies"]`) |
-| `nltk` | Quitar palabras vacías y reducir palabras a su raíz en las sinopsis (`luchan` → `luch`) |
-| `urllib`, `json`, `concurrent.futures` | Descargar el catálogo de la API de TMDb con varias peticiones en paralelo |
+| `nltk` | Quitar palabras vacías y reducir palabras a su raíz |
+| `tkinter` | App de escritorio: buscador con sugerencias, tabla de resultados y ficha |
+| `urllib`, `json`, `concurrent.futures` | Descargar el catálogo de TMDb en paralelo |
+| `unittest` | Pruebas del motor y del descargador, sin red ni claves |
+| HTML, CSS, JavaScript | La web, sin frameworks |
+| GitHub Actions + Cloudflare Pages | Actualización mensual y publicación automática |
 
-## Instalación
+## 🚀 Ejecutarlo en local
 
-Hace falta **Python 3.10 o superior con Tk 8.6+**. En macOS, el Python que trae el sistema
-(3.9 con Tk 8.5) está obsoleto y la ventana se queda colgada; instala uno nuevo:
+Hace falta **Python 3.10 o superior con Tk 8.6+**. En macOS, el Python del sistema (3.9 con
+Tk 8.5) deja la ventana colgada, así que conviene instalar uno nuevo:
 
 ```bash
 brew install python@3.13 python-tk@3.13
 ```
 
-Crea el entorno virtual e instala las dependencias:
-
 ```bash
+git clone https://github.com/M4rKitS/recomendador-netflix.git
+cd recomendador-netflix
 python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m nltk.downloader stopwords
 ```
 
-## Datos: el catálogo actual de Netflix
-
-Los datasets de Netflix de Kaggle se quedaron en 2021, así que el proyecto genera su propio
-catálogo con la API gratuita de [TMDb](https://www.themoviedb.org/). TMDb sabe qué títulos
-están disponibles en Netflix en cada país (gracias a JustWatch), y de cada uno descargamos
-sinopsis, géneros, palabras clave temáticas, país, reparto, dirección (o creadores, en las
-series), clasificación por edades y nota. Si TMDb no tiene la sinopsis en castellano, se usa la
-inglesa, y los títulos en otros alfabetos (오징어 게임) se sustituyen por su título en inglés.
-
-1. Crea una cuenta gratuita en [themoviedb.org](https://www.themoviedb.org/signup).
-2. Ve a **Ajustes → API** ([enlace directo](https://www.themoviedb.org/settings/api)) y solicita
-   una clave de tipo *Developer* para uso personal.
-3. Copia `.env.example` como `.env` y pega tu clave en `TMDB_API_KEY`. El archivo `.env` no se
-   sube a GitHub.
-4. Descarga el catálogo (tarda unos minutos):
-
-   ```bash
-   python descargar_catalogo.py
-   ```
-
-   Se guarda en `data/catalogo_netflix_es.csv`. Para otro país: `--pais MX`, `--pais AR`…
-   Vuelve a ejecutarlo cuando quieras para tener el catálogo al día.
-
-La aplicación usa el catálogo de TMDb más reciente de `data/`. Si no hay ninguno, también acepta
-los CSV antiguos de Kaggle (por ejemplo, [Netflix Movies and TV Shows 2021](https://www.kaggle.com/datasets/satpreetmakhija/netflix-movies-and-tv-shows-2021)),
-porque reconoce sus nombres de columna.
-
-> Este producto usa la API de TMDb pero no está avalado ni certificado por TMDb.
-> Datos de disponibilidad por país: JustWatch.
-
-## Uso
+**Clave de TMDb (gratis):** crea una cuenta en [themoviedb.org](https://www.themoviedb.org/signup),
+pide una clave en [Ajustes → API](https://www.themoviedb.org/settings/api), copia `.env.example`
+como `.env` y pégala en `TMDB_API_KEY`. El `.env` nunca se sube a GitHub.
 
 ```bash
-python app.py
+python descargar_catalogo.py      # descarga el catálogo (unos minutos); --pais MX para otro país
+python app.py                     # app de escritorio
+python recomendador.py "La casa de papel"   # prueba rápida en la terminal
 ```
 
-1. Empieza a escribir un título: aparecen sugerencias (no importan mayúsculas ni acentos, y
-   también puedes escribir el título original o el inglés: "Money Heist" encuentra
-   "La casa de papel").
-2. Pulsa **Recomendar** o Intro.
-3. Filtra por **Películas** o **Series** y elige cuántas recomendaciones ver.
-4. Haz clic en un resultado para leer su sinopsis y por qué te lo recomendamos.
-
-Prueba rápida desde la terminal:
+Para la web:
 
 ```bash
-python recomendador.py "La casa de papel"
+python exportar_web.py                          # precalcula las recomendaciones en web/datos/
+python -m http.server 8000 --directory web      # y abre http://localhost:8000
 ```
 
-## La web: «¿Qué veo ahora?»
+> Sin clave de TMDb la app también acepta los CSV antiguos de Kaggle
+> ([Netflix Movies and TV Shows 2021](https://www.kaggle.com/datasets/satpreetmakhija/netflix-movies-and-tv-shows-2021)),
+> porque reconoce sus nombres de columna.
 
-Una página estática (HTML, CSS y JavaScript, sin frameworks ni servidor) en la carpeta `web/`,
-pensada como una sala de proyección: la portada es una pared de carteles reales del catálogo
-con el buscador encima, y la luz ambiente de la página toma el color del cartel del título que
-eliges. Debajo, la recomendación más parecida en grande y diez más con su afinidad y sus
-motivos; «Cómo decide», que ilumina los pesos del motor en los que coinciden de verdad; y «Esta
-noche», que cuenta cuántas películas caben en el tiempo que tienes. Incluye filtro de películas
-o series, ficha de detalle y enlace para compartir (`?t=Breaking Bad`).
-
-Como Cloudflare Pages no ejecuta Python, el motor calcula **de antemano** las recomendaciones
-de todos los títulos y la web solo las lee:
-
-```bash
-python exportar_web.py   # unos 15 s; genera web/datos/ (catálogo + 99 bloques de fichas)
-```
-
-Para verla en local:
-
-```bash
-python -m http.server 8000 --directory web
-```
-
-y abre http://localhost:8000. Para publicarla en Cloudflare Pages:
-
-```bash
-npx wrangler pages deploy web --project-name queveoahora
-```
-
-Para actualizarla a mano: `descargar_catalogo.py` → `exportar_web.py` → volver a publicar.
-
-### Actualización automática cada mes
-
-`.github/workflows/actualizar-web.yml` lo hace solo el **día 1 de cada mes** (y cuando quieras,
-con *Run workflow* en la pestaña *Actions* de GitHub). También se lanza sola cada vez que se
-sube un cambio de la web (`web/`) o del motor (`*.py`), así que un arreglo se publica sin tocar nada:
-
-1. Instala las dependencias y pasa las pruebas del motor.
-2. Descarga el catálogo actual de Netflix España desde TMDb.
-3. Comprueba que el catálogo está completo (si TMDb falla a medias, no publica nada).
-4. Precalcula todas las recomendaciones con `exportar_web.py`.
-5. Publica en Cloudflare Pages.
-6. Anota la fecha en `ULTIMA_ACTUALIZACION.md` con un pequeño commit, que además evita que
-   GitHub desactive la tarea programada por falta de actividad.
-
-Necesita el proyecto en su propio repositorio de GitHub y tres secretos en
-*Settings → Secrets and variables → Actions*:
-
-| Secreto | De dónde sale |
-| --- | --- |
-| `TMDB_API_KEY` | La misma clave de TMDb del archivo `.env`. |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare → *My Profile → API Tokens*, plantilla con permiso *Cloudflare Pages: Edit*. |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare → *Workers & Pages*, columna de la derecha. |
-
-## Cómo funciona el motor
-
-Es un **recomendador basado en contenido**: no usa valoraciones de otros usuarios, sino las
-características de cada título.
-
-1. **Limpieza.** Cada título se convierte en grupos de etiquetas: géneros, temas (las palabras
-   clave de TMDb, como "heist" o "1980s"), dirección, los seis primeros actores, país, clasificación por edades, tipo (película o serie) y palabras clave de
-   la sinopsis (sin palabras vacías y reducidas a su raíz con NLTK). El idioma de las sinopsis
-   (castellano o inglés) se detecta solo en cada una.
-2. **Rareza de cada etiqueta (IDF).** Compartir algo raro informa más que compartir algo común:
-   que dos títulos tengan el mismo director pesa mucho más que ser ambos "Drama". Las etiquetas
-   que solo tiene un título (una palabra rara de su sinopsis, un actor que no sale en nada más)
-   se descartan: nunca pueden coincidir y solo rebajarían todas sus afinidades.
-3. **Un vector por título.** Cada etiqueta vale *peso de su grupo × rareza*. Los pesos son:
-
-   | Grupo | Peso |
-   |---|---|
-   | Géneros | 3 |
-   | Temas (palabras clave de TMDb) | 2 |
-   | Dirección | 2 |
-   | Reparto | 2 |
-   | Palabras clave de la sinopsis | 1,5 |
-   | País | 1 |
-   | Clasificación por edades | 0,75 |
-   | Tipo | 0,5 |
-
-4. **Afinidad: dos medidas en una.** El motor calcula:
-   - el **coseno** entre los vectores completos, que premia compartir lo raro pero sale bajo
-     incluso entre títulos muy parecidos, porque cada uno tiene muchas etiquetas propias;
-   - la **afinidad por aspectos**: el coseno dentro de cada grupo (¿cuánto se parecen sus
-     géneros?, ¿y su reparto?), en media ponderada por los pesos.
-
-   La afinidad final es la **media geométrica** de las dos (0 % = nada en común, 100 % =
-   idénticos): solo puntúa alto lo que destaca en ambas. Con solo el coseno, la mejor
-   recomendación de un título rondaba el 15 % y la décima el 9 %; ahora rondan el 36 % y el
-   23 %, y las listas apenas cambian (las secuelas y spin-offs siguen arriba).
-   Un índice invertido (etiqueta → títulos que la tienen) permite comparar un título contra
-   miles en un milisegundo. Si a un título le falta un dato (muchas series no tienen
-   director), ese grupo simplemente no cuenta.
-5. **Ajustes finales.** Entre títulos igual de parecidos se prefieren los más populares (hasta
-   un 15 % extra para el más votado) y los mejor valorados (hasta un 3 %; las notas con menos
-   de 20 votos no cuentan). Sin este ajuste, series casi desconocidas con muy pocos datos
-   aparecían arriba solo por coincidir en un par de géneros.
-
-   Por qué no basta la afinidad por aspectos sola: una película con un único género muy común
-   ("Dramas") coincide al 100 % en géneros con cientos de dramas, y eso pesaría más que
-   compartir director y actores. Al combinarla con el coseno del vector completo, las
-   coincidencias raras (Martin Scorsese, Robert De Niro) siguen pesando lo que deben.
-
-Cómo leer el porcentaje: 40 % o más es de la misma familia (secuelas, spin-offs); entre 25 y
-40 %, muy parecida; por debajo, parecida en el tipo de historia.
-
-Los pesos están en el diccionario `PESOS` de `recomendador.py` y se pueden ajustar.
-
-## Pruebas
+## 🧪 Pruebas
 
 ```bash
 python -m unittest discover -s tests -t .
 ```
 
-Las pruebas no necesitan red ni clave: usan CSV pequeños con títulos inventados (uno con el
-formato de Kaggle y otro con el del catálogo de TMDb) y un cliente de TMDb falso para el script
-de descarga.
+21 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
+formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el descargador.
 
-## Estructura
+## 📁 Estructura
 
 ```
 .
-├── app.py                  # Interfaz gráfica con tkinter
 ├── recomendador.py         # Carga de datos y motor de recomendación
 ├── descargar_catalogo.py   # Descarga el catálogo actual de Netflix desde TMDb
 ├── exportar_web.py         # Precalcula las recomendaciones en JSON para la web
-├── web/                    # La web pública (index.html, estilo.css, app.js, datos/)
-├── data/                   # Catálogo descargado (no se sube al repositorio)
+├── app.py                  # App de escritorio con tkinter
+├── web/                    # La web pública (index.html, estilo.css, app.js, favicon.svg)
 ├── tests/                  # Pruebas unitarias y CSV de ejemplo
-├── .github/workflows/      # Actualización automática mensual de la web
+├── docs/                   # Capturas de este README
+├── .github/workflows/      # Actualización y publicación automática
 ├── .env.example            # Plantilla para la clave de TMDb
 └── requirements.txt
 ```
+
+## 🙌 Créditos
+
+- Datos e imágenes de [TMDb](https://www.themoviedb.org/). Disponibilidad por país:
+  [JustWatch](https://www.justwatch.com/).
+- *Este producto usa la API de TMDb, pero no está avalado ni certificado por TMDb.*
+- Proyecto educativo sin relación con Netflix: no está afiliado a Netflix ni avalado por Netflix.
+
+Hecho por **Marcos** ([@M4rKitS](https://github.com/M4rKitS)) en el Máster Full Stack de Conquer Blocks.
