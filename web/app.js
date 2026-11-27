@@ -44,6 +44,18 @@ function imagen(ruta, tamano, alt = "", { prisa = false } = {}) {
 
 function titulo(i) { return estado.catalogo[i][0]; }
 function meta(i) { const [, , anio, tipo] = estado.catalogo[i]; return [TIPO[tipo], anio].filter(Boolean).join(" · "); }
+/** Nota del público ("★ 8,2"), o null si tiene muy pocos votos para fiarse. */
+function nota(i) { const n = estado.catalogo[i][7]; return n ? `★\u00a0${String(n).replace(".", ",")}` : null; }
+const PUBLICO = "Recomendada por el público";
+
+/** Icono de dos personas: la comunidad de TMDb también lo recomienda. */
+function iconoPublico() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = '<circle cx="9" cy="8" r="3.25"/><path d="M2.75 19.5c.6-3.4 3.1-5.5 6.25-5.5s5.65 2.1 6.25 5.5"/><circle cx="16.5" cy="9" r="2.5"/><path d="M16.5 13.75c2.6 0 4.4 1.7 4.85 4.5"/>';
+  return svg;
+}
 // El castellano no separa los miles en números de cuatro cifras ("6580"), pero aquí se lee mejor "6.580".
 function numero(n) { return n.toLocaleString("es-ES", { useGrouping: "always" }); }
 
@@ -367,13 +379,20 @@ async function pintar() {
   }));
 }
 
-function chipsMotivos(motivos) {
-  return crear("ul", { class: "motivos" }, ...motivos.map(([n, v]) => crear("li", {}, crear("b", { texto: n }), v.join(", "))));
+function itemsMotivos(motivos, publico) {
+  return [
+    publico ? crear("li", { class: "motivo-publico" }, iconoPublico(), PUBLICO) : null,
+    ...motivos.map(([n, v]) => crear("li", {}, crear("b", { texto: n }), v.join(", "))),
+  ];
 }
 
-function destacada(j, [afinidad, motivos], ficha) {
+function chipsMotivos(motivos, publico) {
+  return crear("ul", { class: "motivos" }, ...itemsMotivos(motivos, publico));
+}
+
+function destacada(j, [afinidad, motivos, publico], ficha) {
   const [nombre, , , , cartel] = estado.catalogo[j];
-  const abrir = () => abrirFicha(j, motivos);
+  const abrir = () => abrirFicha(j, motivos, publico);
   const fondo = ficha?.bd ? imagen(ficha.bd, "w1280", "", { prisa: true }) : (cartel ? imagen(cartel, "w780", "", { prisa: true }) : null);
   return crear("article", { class: "destacada aparecer", onclick: abrir },
     crear("div", { class: "destacada-fondo" }, fondo),
@@ -385,8 +404,8 @@ function destacada(j, [afinidad, motivos], ficha) {
         crear("div", {},
           crear("p", { class: "destacada-puesto", texto: "La que más se parece" }),
           crear("h3", { class: "destacada-titulo" }, crear("button", { type: "button", texto: nombre, onclick: (e) => { e.stopPropagation(); abrir(); } })),
-          crear("p", { class: "meta", texto: [meta(j), ficha?.dur].filter(Boolean).join(" · ") }))),
-      motivos.length ? chipsMotivos(motivos) : null,
+          crear("p", { class: "meta", texto: [meta(j), ficha?.dur, nota(j)].filter(Boolean).join(" · ") }))),
+      motivos.length || publico ? chipsMotivos(motivos, publico) : null,
       ficha?.d ? crear("p", { class: "destacada-sinopsis", texto: recortar(ficha.d, 240) }) : null,
       crear("div", { class: "destacada-acciones" },
         crear("button", { type: "button", class: "boton", texto: "Recomiéndame a partir de esta", onclick: (e) => { e.stopPropagation(); elegir(j); } }),
@@ -396,18 +415,20 @@ function destacada(j, [afinidad, motivos], ficha) {
 function carteles(ids, recomendados) {
   return crear("ul", { class: "carteles" }, ...ids.map((j, n) => {
     const [nombre, , , , cartel] = estado.catalogo[j];
-    const [afinidad, motivos] = recomendados[j];
-    const abrir = () => abrirFicha(j, motivos);
+    const [afinidad, motivos, publico] = recomendados[j];
+    const abrir = () => abrirFicha(j, motivos, publico);
     const marco = crear("div", { class: "cartel-marco" },
       crear("span", { class: "cartel-puesto", texto: `${afinidad}%`, "aria-label": `${afinidad} % de afinidad` }),
+      publico ? crear("span", { class: "cartel-publico", title: PUBLICO, role: "img", "aria-label": PUBLICO }, iconoPublico()) : null,
       cartel ? imagen(cartel, "w342", "") : crear("div", { class: "sin-cartel-grande", texto: nombre }),
-      motivos.length ? crear("div", { class: "cartel-capa", "aria-hidden": "true" },
+      motivos.length || publico ? crear("div", { class: "cartel-capa", "aria-hidden": "true" },
+        publico ? crear("span", {}, crear("b", { texto: PUBLICO })) : null,
         ...motivos.map(([k, v]) => crear("span", {}, crear("b", { texto: `${k} ` }), v.join(", ")))) : null);
     relieve(marco);
     return crear("li", { class: "cartel aparecer", style: `--retraso:${120 + n * 55}ms` },
       marco,
       crear("h3", { class: "cartel-titulo" }, crear("button", { type: "button", texto: nombre, onclick: abrir })),
-      crear("p", { class: "meta", texto: meta(j) }));
+      crear("p", { class: "meta", texto: [meta(j), nota(j)].filter(Boolean).join(" · ") }));
   }));
 }
 
@@ -439,12 +460,13 @@ function explicar(origen, primera, datos) {
   $$("#pesos li").forEach((li) => li.classList.toggle("coincide", coinciden.has(li.dataset.grupo)));
   marcarEscala(datos?.[0]);
   if (!datos) { caja.textContent = "Elige un título y verás aquí qué tiene en común con su mejor recomendación."; return; }
-  const [afinidad, motivos] = datos;
+  const [afinidad, motivos, publico] = datos;
   const partes = motivos.map(([n, v]) => `${n.toLowerCase()} (${v.join(", ")})`);
   const lista = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}` : partes[0];
   caja.replaceChildren(
     crear("strong", { texto: titulo(origen) }), " y ", crear("strong", { texto: titulo(primera) }),
     lista ? ` coinciden en ${lista}. ` : " se parecen por su sinopsis y su formato. ",
+    publico ? "Además, según la comunidad de TMDb, a quien le gustó una también le gustó la otra. " : "",
     `Con un ${afinidad} % de afinidad (${nivel(afinidad)}), es la primera recomendación. Los grupos marcados son los que más han pesado.`);
 }
 
@@ -492,7 +514,7 @@ radios.forEach((r, n) => {
 
 const dialogo = $("#ficha");
 
-async function abrirFicha(j, motivos = []) {
+async function abrirFicha(j, motivos = [], publico = 0) {
   const ficha = await bloqueDe(j).catch(() => null);
   if (!ficha) return;
   const [nombre, alias, anio, tipo, cartel] = estado.catalogo[j];
@@ -501,8 +523,8 @@ async function abrirFicha(j, motivos = []) {
   $("#ficha-titulo").textContent = nombre;
   $("#ficha-meta").textContent = [TIPO[tipo], anio, ficha.dur, ficha.nota ? `nota ${String(ficha.nota).replace(".", ",")}` : null, alias]
     .filter(Boolean).join(" · ");
-  $("#ficha-motivos").replaceChildren(...motivos.map(([n, v]) => crear("li", {}, crear("b", { texto: n }), v.join(", "))));
-  $("#ficha-motivos").hidden = !motivos.length;
+  $("#ficha-motivos").replaceChildren(...itemsMotivos(motivos, publico).filter(Boolean));
+  $("#ficha-motivos").hidden = !motivos.length && !publico;
   $("#ficha-sinopsis").textContent = ficha.d || "Sin sinopsis.";
   const datos = [
     ["Géneros", ficha.g],
