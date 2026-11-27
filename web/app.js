@@ -14,6 +14,9 @@ const DATOS = INGLES ? "/datos/us/" : "/datos/es/";
 const IMG = "https://image.tmdb.org/t/p/";
 const POR_BLOQUE = 100;
 const MAX_SUGERENCIAS = 8;
+// Título con el que arranca la sección de recomendaciones si no llega ninguno en el enlace.
+// El buscador no lo muestra escrito: solo lo sugiere en el placeholder.
+const INICIAL = "Stranger Things";
 
 /** Todos los textos que escribe el JavaScript, en los dos idiomas. */
 const TEXTOS = {
@@ -403,6 +406,7 @@ entrada.addEventListener("keydown", (e) => {
 
 $("#buscador").addEventListener("submit", (e) => {
   e.preventDefault();
+  if (!entrada.value.trim()) { entrada.focus(); return; } // buscador vacío: no hay nada que buscar
   const i = exacto(entrada.value);
   if (i < 0) {
     cerrarSugerencias();
@@ -423,11 +427,11 @@ function prepararEjemplos() {
 
 /* ---------- Elegir un título y mostrar sus recomendaciones ---------- */
 
-async function elegir(i, { desplazar = true, historial = true } = {}) {
+async function elegir(i, { desplazar = true, historial = true, rellenar = true } = {}) {
   if (i < 0) return;
   cerrarSugerencias();
   estado.actual = i;
-  entrada.value = titulo(i);
+  if (rellenar) entrada.value = titulo(i);
   if (historial) history.replaceState(null, "", `?t=${encodeURIComponent(titulo(i))}`);
   ponerAmbiente(estado.catalogo[i][4]);
   await pintar();
@@ -735,8 +739,8 @@ async function iniciar() {
   contarPeliculas();
 
   const pedido = new URLSearchParams(location.search).get("t");
-  const inicial = exacto(pedido || entrada.value);
-  if (inicial >= 0) elegir(inicial, { desplazar: Boolean(pedido), historial: Boolean(pedido) });
+  const inicial = exacto(pedido || INICIAL);
+  if (inicial >= 0) elegir(inicial, { desplazar: Boolean(pedido), historial: Boolean(pedido), rellenar: Boolean(pedido) });
 }
 
 iniciar();

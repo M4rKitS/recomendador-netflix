@@ -287,7 +287,8 @@ a { color: inherit; }
   border: 0; background: none; outline: none;
   font-size: 1.125rem; font-weight: 500;
 }
-.entrada::placeholder { color: var(--texto-3); }
+.entrada::placeholder { color: var(--texto-3); transition: color .2s; }
+.buscador:focus-within .entrada::placeholder { color: transparent; } /* la sugerencia se va al pulsar en el buscador */
 .buscador .entrada:focus-visible { outline: none; }
 .buscador .boton { min-height: 3.25rem; padding-inline: 1.75rem; }
 
