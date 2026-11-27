@@ -4,13 +4,15 @@
 
 **Tell it a film or series you loved, and it tells you what to watch tonight on Netflix Spain, and why.**
 
-*«¿Qué veo ahora?» is Spanish for "What should I watch now?". The website is in Spanish.*
+*«¿Qué veo ahora?» is Spanish for "What should I watch now?". The site has a Spanish version
+(Netflix Spain) and an English one that uses the Netflix US catalogue.*
 
 [![Live site](https://img.shields.io/badge/live-queveoahora.pages.dev-ffd166?style=for-the-badge)](https://queveoahora.pages.dev)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Updates](https://img.shields.io/badge/catalogue-updates%20itself%20monthly-2ea44f?style=for-the-badge)
 
-👉 **Try it at https://queveoahora.pages.dev**
+👉 **Try it in English (Netflix US) at https://queveoahora.pages.dev/en/** · Spanish version
+(Netflix Spain): **https://queveoahora.pages.dev**
 
 ![Home page: a wall of posters from the catalogue with the search box on top](docs/portada.jpg)
 
@@ -48,6 +50,9 @@ them. No black boxes: the website shows live how it reached each decision.
   catalogue you can watch in full, with the five most popular fanned out.
 - 🔗 **Shareable links**: `https://queveoahora.pages.dev/?t=Breaking Bad` opens that title's
   recommendations directly.
+- 🌍 **Two languages, two catalogues**: a flag switcher moves between the Spanish site (Netflix
+  Spain) and the English site (Netflix US, at `/en/`). Both run the same engine and the same code;
+  each has its own catalogue and recommendations.
 - 📱 **Designed for phones too**, usable from the keyboard and respectful of reduced-motion
   preferences.
 
@@ -153,11 +158,11 @@ The weights live in the `PESOS` dictionary in `recomendador.py` and can be tuned
 manually from the *Actions* tab:
 
 1. Installs the dependencies and runs the engine's **tests**.
-2. Downloads the current Netflix Spain catalogue.
-3. **Checks it is complete** with `comprobar_catalogo.py`: if it has fewer than 5,000 titles or
+2. Downloads the current Netflix Spain (in Spanish) and Netflix US (in English) catalogues.
+3. **Checks each one is complete** with `comprobar_catalogo.py`: if it has fewer than 5,000 titles or
    5 % fewer than the last published one (TMDb sometimes returns a partial catalogue), nothing
    is published and the site stays as it was. Manual runs can tick "force".
-4. Precomputes every recommendation.
+4. Precomputes every recommendation for both catalogues.
 5. Publishes to **Cloudflare Pages** with Wrangler.
 6. Records the date in [`ULTIMA_ACTUALIZACION.md`](ULTIMA_ACTUALIZACION.md) with a small commit.
 
@@ -200,7 +205,8 @@ request a key under [Settings → API](https://www.themoviedb.org/settings/api),
 `.env.example` to `.env` and paste it into `TMDB_API_KEY`. The `.env` file is never pushed to GitHub.
 
 ```bash
-python descargar_catalogo.py      # downloads the catalogue (a few minutes); --pais MX for another country
+python descargar_catalogo.py      # downloads the Netflix Spain catalogue (a few minutes)
+python descargar_catalogo.py --pais US --idioma en-US   # the Netflix US one, in English
 python app.py                     # desktop app
 python recomendador.py "La casa de papel"   # quick test in the terminal
 ```
@@ -208,7 +214,8 @@ python recomendador.py "La casa de papel"   # quick test in the terminal
 For the website:
 
 ```bash
-python exportar_web.py                          # precomputes the recommendations into web/datos/
+python exportar_web.py                          # precomputes the recommendations into web/datos/es/
+python exportar_web.py --pais US                # and the Netflix US ones into web/datos/us/
 python -m http.server 8000 --directory web      # then open http://localhost:8000
 ```
 
@@ -222,7 +229,7 @@ python -m http.server 8000 --directory web      # then open http://localhost:800
 python -m unittest discover -s tests -t .
 ```
 
-33 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
+35 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
 format and one in TMDb's) and a fake TMDb client for the downloader.
 
 ## 📁 Structure
@@ -235,6 +242,7 @@ format and one in TMDb's) and a fake TMDb client for the downloader.
 ├── comprobar_catalogo.py   # Stops publishing if the downloaded catalogue is incomplete
 ├── app.py                  # Desktop app with tkinter
 ├── web/                    # The public site (index.html, estilo.css, app.js, favicon.svg)
+│   └── en/                 # The English version (Netflix US), sharing app.js and estilo.css
 ├── tests/                  # Unit tests and sample CSVs
 ├── docs/                   # Screenshots for this README
 ├── .github/workflows/      # Automatic update and publishing
@@ -242,7 +250,7 @@ format and one in TMDb's) and a fake TMDb client for the downloader.
 └── requirements.txt
 ```
 
-The code, comments and interface are in Spanish, as the project was built for a Spanish-speaking course.
+The code and comments are in Spanish, as the project was built for a Spanish-speaking course.
 
 ## 🙌 Credits
 

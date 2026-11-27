@@ -8,7 +8,8 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Actualización](https://img.shields.io/badge/cat%C3%A1logo-se%20actualiza%20solo%20cada%20mes-2ea44f?style=for-the-badge)
 
-👉 **Pruébala en https://queveoahora.pages.dev**
+👉 **Pruébala en https://queveoahora.pages.dev** · versión en inglés con el catálogo de Netflix USA:
+**https://queveoahora.pages.dev/en/**
 
 ![Portada de la web: una pared de carteles del catálogo con el buscador encima](docs/portada.jpg)
 
@@ -46,6 +47,9 @@ gente para ordenarlos. Sin cajas negras: la web enseña en directo cómo ha deci
   del catálogo te da tiempo a ver, con las cinco más populares en abanico.
 - 🔗 **Enlaces para compartir**: `https://queveoahora.pages.dev/?t=Breaking Bad` abre directamente
   las recomendaciones de ese título.
+- 🌍 **Dos idiomas, dos catálogos**: un selector con banderas cambia entre la web en castellano
+  (Netflix España) y la web en inglés (Netflix USA, en `/en/`). Las dos usan el mismo motor y el
+  mismo código; cada una tiene su catálogo y sus recomendaciones.
 - 📱 **Pensada también para el móvil**, accesible con teclado y respetuosa con quien prefiere
   menos animaciones.
 
@@ -151,11 +155,11 @@ Los pesos están en el diccionario `PESOS` de `recomendador.py` y se pueden ajus
 desde la pestaña *Actions*:
 
 1. Instala las dependencias y pasa las **pruebas** del motor.
-2. Descarga el catálogo actual de Netflix España.
-3. **Comprueba que está completo** con `comprobar_catalogo.py`: si tiene menos de 5.000 títulos
+2. Descarga los catálogos actuales de Netflix España (en castellano) y Netflix USA (en inglés).
+3. **Comprueba que cada uno está completo** con `comprobar_catalogo.py`: si tiene menos de 5.000 títulos
    o un 5 % menos que el último publicado (TMDb a veces devuelve el catálogo a medias), no
    publica nada y la web se queda como estaba. Al lanzarlo a mano se puede marcar «forzar».
-4. Precalcula todas las recomendaciones.
+4. Precalcula todas las recomendaciones de los dos catálogos.
 5. Publica en **Cloudflare Pages** con Wrangler.
 6. Anota la fecha en [`ULTIMA_ACTUALIZACION.md`](ULTIMA_ACTUALIZACION.md) con un pequeño commit.
 
@@ -198,7 +202,8 @@ pide una clave en [Ajustes → API](https://www.themoviedb.org/settings/api), co
 como `.env` y pégala en `TMDB_API_KEY`. El `.env` nunca se sube a GitHub.
 
 ```bash
-python descargar_catalogo.py      # descarga el catálogo (unos minutos); --pais MX para otro país
+python descargar_catalogo.py      # descarga el catálogo de Netflix España (unos minutos)
+python descargar_catalogo.py --pais US --idioma en-US   # el de Netflix USA, en inglés
 python app.py                     # app de escritorio
 python recomendador.py "La casa de papel"   # prueba rápida en la terminal
 ```
@@ -206,7 +211,8 @@ python recomendador.py "La casa de papel"   # prueba rápida en la terminal
 Para la web:
 
 ```bash
-python exportar_web.py                          # precalcula las recomendaciones en web/datos/
+python exportar_web.py                          # precalcula las recomendaciones en web/datos/es/
+python exportar_web.py --pais US                # y las de Netflix USA en web/datos/us/
 python -m http.server 8000 --directory web      # y abre http://localhost:8000
 ```
 
@@ -220,7 +226,7 @@ python -m http.server 8000 --directory web      # y abre http://localhost:8000
 python -m unittest discover -s tests -t .
 ```
 
-33 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
+35 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
 formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el descargador.
 
 ## 📁 Estructura
@@ -233,6 +239,7 @@ formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el desc
 ├── comprobar_catalogo.py   # Para la publicación si el catálogo descargado está incompleto
 ├── app.py                  # App de escritorio con tkinter
 ├── web/                    # La web pública (index.html, estilo.css, app.js, favicon.svg)
+│   └── en/                 # La versión en inglés (Netflix USA), con el mismo app.js y estilo.css
 ├── tests/                  # Pruebas unitarias y CSV de ejemplo
 ├── docs/                   # Capturas de este README
 ├── .github/workflows/      # Actualización y publicación automática
