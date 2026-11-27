@@ -26,11 +26,12 @@ Cada recomendación lleva:
 
 - un **porcentaje de afinidad** con una escala que explica qué significa;
 - los **motivos concretos**: mismo director, actores en común, temas o géneros compartidos;
+- si **el público también la recomienda** a quien vio tu título, y su nota (★ 8,2);
 - su ficha con sinopsis, reparto y nota.
 
-No usa valoraciones de otros usuarios ni ninguna caja negra: es un **recomendador basado en
-contenido** escrito desde cero con `pandas`, `numpy`, `re` y `nltk`, y la web enseña en directo
-cómo ha decidido.
+Es un **recomendador híbrido** escrito desde cero con `pandas`, `numpy`, `re` y `nltk`: primero
+mide cuánto se parecen los títulos por su contenido y después tiene en cuenta la opinión de la
+gente para ordenarlos. Sin cajas negras: la web enseña en directo cómo ha decidido.
 
 ## ✨ Qué puedes hacer en la web
 
@@ -72,7 +73,8 @@ flowchart LR
 **1. Datos reales y actuales.** Los datasets de Netflix de Kaggle se quedaron en 2021, así que
 `descargar_catalogo.py` genera su propio catálogo con la API de TMDb, que sabe qué hay en
 Netflix en cada país gracias a JustWatch. De cada título descarga sinopsis, géneros, palabras
-clave, país, reparto, dirección (o creadores, en las series), clasificación por edades y nota.
+clave, país, reparto, dirección (o creadores, en las series), clasificación por edades, nota
+y las recomendaciones de la comunidad de TMDb, todo en una sola petición por título.
 Usa varias peticiones en paralelo (`concurrent.futures`) y reintentos. Si falta la sinopsis en
 castellano usa la inglesa, y los títulos en otros alfabetos (오징어 게임) se cambian por su
 título en inglés.
@@ -112,8 +114,21 @@ la web usa esta escala:
 | **Menos del 25 %** | Del mismo estilo: buena para descubrir algo distinto |
 
 **6. Rápido.** Un **índice invertido** (etiqueta → títulos que la tienen) compara un título
-contra todo el catálogo en un milisegundo. Al final, entre títulos igual de parecidos se
-prefieren los más populares (hasta un 15 % extra) y los mejor valorados (hasta un 3 %).
+contra todo el catálogo en un milisegundo. Los más vistos suben hasta un 15 %, porque es más
+probable que gusten.
+
+**7. La opinión del público.** Sobre la afinidad de contenido se añaden dos señales de la gente:
+
+- **Lo que recomienda la comunidad de TMDb** a quien vio tu título («a quien le gustó X también
+  le gustó Y»). Si una recomendación del motor está en esa lista, sube hasta un **20 %** en el
+  orden y lleva la etiqueta «Recomendada por el público». Cuenta en los dos sentidos y pesa más
+  cuanto más arriba aparece.
+- **La nota del público, corregida por votos** con la fórmula del top 250 de IMDb
+  (`(v·R + m·C) / (v + m)`): un 9,6 con 3 votos se queda cerca de la media; un 8,5 con 20.000
+  votos se queda en 8,5.
+
+La opinión **solo cambia el orden**: el porcentaje de afinidad sigue midiendo cuánto se parecen,
+para que la escala de arriba siga significando lo mismo.
 
 Los pesos están en el diccionario `PESOS` de `recomendador.py` y se pueden ajustar.
 
@@ -137,7 +152,9 @@ desde la pestaña *Actions*:
 
 1. Instala las dependencias y pasa las **pruebas** del motor.
 2. Descarga el catálogo actual de Netflix España.
-3. **Comprueba que está completo**: si TMDb falla a medias, no publica nada.
+3. **Comprueba que está completo** con `comprobar_catalogo.py`: si tiene menos de 5.000 títulos
+   o un 5 % menos que el último publicado (TMDb a veces devuelve el catálogo a medias), no
+   publica nada y la web se queda como estaba. Al lanzarlo a mano se puede marcar «forzar».
 4. Precalcula todas las recomendaciones.
 5. Publica en **Cloudflare Pages** con Wrangler.
 6. Anota la fecha en [`ULTIMA_ACTUALIZACION.md`](ULTIMA_ACTUALIZACION.md) con un pequeño commit.
@@ -154,7 +171,7 @@ Las claves (TMDb y Cloudflare) se guardan como **secretos de GitHub** y nunca se
 | `nltk` | Quitar palabras vacías y reducir palabras a su raíz |
 | `tkinter` | App de escritorio: buscador con sugerencias, tabla de resultados y ficha |
 | `urllib`, `json`, `concurrent.futures` | Descargar el catálogo de TMDb en paralelo |
-| `unittest` | Pruebas del motor y del descargador, sin red ni claves |
+| `unittest` | Pruebas del motor, del descargador y de la comprobación del catálogo, sin red ni claves |
 | HTML, CSS, JavaScript | La web, sin frameworks |
 | GitHub Actions + Cloudflare Pages | Actualización mensual y publicación automática |
 
@@ -203,7 +220,7 @@ python -m http.server 8000 --directory web      # y abre http://localhost:8000
 python -m unittest discover -s tests -t .
 ```
 
-21 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
+33 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
 formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el descargador.
 
 ## 📁 Estructura
@@ -213,6 +230,7 @@ formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el desc
 ├── recomendador.py         # Carga de datos y motor de recomendación
 ├── descargar_catalogo.py   # Descarga el catálogo actual de Netflix desde TMDb
 ├── exportar_web.py         # Precalcula las recomendaciones en JSON para la web
+├── comprobar_catalogo.py   # Para la publicación si el catálogo descargado está incompleto
 ├── app.py                  # App de escritorio con tkinter
 ├── web/                    # La web pública (index.html, estilo.css, app.js, favicon.svg)
 ├── tests/                  # Pruebas unitarias y CSV de ejemplo

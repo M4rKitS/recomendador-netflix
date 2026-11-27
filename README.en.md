@@ -28,11 +28,12 @@ Every recommendation comes with:
 
 - an **affinity percentage**, with a scale that explains what it means;
 - the **concrete reasons**: same director, shared cast, shared themes or genres;
+- whether **audiences also recommend it** to people who watched your title, and its rating (★ 8.2);
 - a detail card with the synopsis, cast and rating.
 
-It does not use other people's ratings, and there is no black box: it is a **content-based
-recommender** written from scratch with `pandas`, `numpy`, `re` and `nltk`, and the website
-shows live how it reached each decision.
+It is a **hybrid recommender** written from scratch with `pandas`, `numpy`, `re` and `nltk`: it
+first measures how alike titles are by their content, then uses what people think to rank
+them. No black boxes: the website shows live how it reached each decision.
 
 ## ✨ What you can do on the site
 
@@ -74,7 +75,8 @@ flowchart LR
 **1. Real, current data.** The Netflix datasets on Kaggle stopped in 2021, so
 `descargar_catalogo.py` builds its own catalogue from the TMDb API, which knows what is on
 Netflix in each country thanks to JustWatch. For every title it downloads the synopsis, genres,
-keywords, country, cast, director (or creators, for series), age rating and score. It runs
+keywords, country, cast, director (or creators, for series), age rating, score and the TMDb
+community's recommendations, all in a single request per title. It runs
 several requests in parallel (`concurrent.futures`) and retries on failure. When there is no
 Spanish synopsis it falls back to English, and titles in other scripts (오징어 게임) are replaced
 by their English title.
@@ -114,8 +116,21 @@ this scale:
 | **Under 25 %** | Same style: good for discovering something different |
 
 **6. Fast.** An **inverted index** (tag → titles that have it) compares one title against the
-whole catalogue in a millisecond. Finally, among equally similar titles, the more popular ones
-(up to 15 % extra) and the better rated ones (up to 3 %) are preferred.
+whole catalogue in a millisecond. The most watched titles get up to 15 % extra, since people
+are more likely to enjoy them.
+
+**7. What audiences think.** Two signals from people are added on top of content affinity:
+
+- **What the TMDb community recommends** to people who watched your title ("people who liked X
+  also liked Y"). If one of the engine's picks is on that list, it moves up by as much as
+  **20 %** and is labelled "Recommended by audiences". It works in both directions and weighs
+  more the higher it appears.
+- **The audience rating, adjusted for votes** with IMDb's top 250 formula
+  (`(v·R + m·C) / (v + m)`): a 9.6 with 3 votes stays close to the average; an 8.5 with 20,000
+  votes stays at 8.5.
+
+Audience opinion **only changes the order**: the affinity percentage still measures how alike
+two titles are, so the scale above keeps its meaning.
 
 The weights live in the `PESOS` dictionary in `recomendador.py` and can be tuned.
 
@@ -139,7 +154,9 @@ manually from the *Actions* tab:
 
 1. Installs the dependencies and runs the engine's **tests**.
 2. Downloads the current Netflix Spain catalogue.
-3. **Checks it is complete**: if TMDb fails halfway, nothing is published.
+3. **Checks it is complete** with `comprobar_catalogo.py`: if it has fewer than 5,000 titles or
+   5 % fewer than the last published one (TMDb sometimes returns a partial catalogue), nothing
+   is published and the site stays as it was. Manual runs can tick "force".
 4. Precomputes every recommendation.
 5. Publishes to **Cloudflare Pages** with Wrangler.
 6. Records the date in [`ULTIMA_ACTUALIZACION.md`](ULTIMA_ACTUALIZACION.md) with a small commit.
@@ -156,7 +173,7 @@ The keys (TMDb and Cloudflare) are stored as **GitHub secrets** and never reach 
 | `nltk` | Removing stop words and stemming |
 | `tkinter` | Desktop app: search with suggestions, results table and detail card |
 | `urllib`, `json`, `concurrent.futures` | Downloading the catalogue from TMDb in parallel |
-| `unittest` | Tests for the engine and the downloader, with no network or keys |
+| `unittest` | Tests for the engine, the downloader and the catalogue check, with no network or keys |
 | HTML, CSS, JavaScript | The website, without frameworks |
 | GitHub Actions + Cloudflare Pages | Monthly update and automatic publishing |
 
@@ -205,7 +222,7 @@ python -m http.server 8000 --directory web      # then open http://localhost:800
 python -m unittest discover -s tests -t .
 ```
 
-21 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
+33 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
 format and one in TMDb's) and a fake TMDb client for the downloader.
 
 ## 📁 Structure
@@ -215,6 +232,7 @@ format and one in TMDb's) and a fake TMDb client for the downloader.
 ├── recomendador.py         # Data loading and recommendation engine
 ├── descargar_catalogo.py   # Downloads the current Netflix catalogue from TMDb
 ├── exportar_web.py         # Precomputes the recommendations as JSON for the site
+├── comprobar_catalogo.py   # Stops publishing if the downloaded catalogue is incomplete
 ├── app.py                  # Desktop app with tkinter
 ├── web/                    # The public site (index.html, estilo.css, app.js, favicon.svg)
 ├── tests/                  # Unit tests and sample CSVs
