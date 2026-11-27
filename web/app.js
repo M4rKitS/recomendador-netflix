@@ -1,16 +1,108 @@
 /* ¿Qué veo ahora? — lógica de la web.
    Los datos los genera exportar_web.py con el motor en Python: catalogo.json (todos los
-   títulos) y fichas/NNN.json (detalle y recomendaciones precalculadas, en bloques de 100). */
+   títulos) y fichas/NNN.json (detalle y recomendaciones precalculadas, en bloques de 100).
+
+   Hay dos webs con este mismo código: la española (/, catálogo de Netflix España) y la
+   inglesa (/en/, catálogo de Netflix USA). El idioma sale del atributo lang de la página. */
 
 "use strict";
 
 document.documentElement.classList.add("js");
 
+const INGLES = document.documentElement.lang === "en";
+const DATOS = INGLES ? "/datos/us/" : "/datos/es/";
 const IMG = "https://image.tmdb.org/t/p/";
 const POR_BLOQUE = 100;
 const MAX_SUGERENCIAS = 8;
-const TIPO = { p: "Película", s: "Serie" };
-const GRUPO = { "Dirección": "Dirección", "Creación": "Dirección", Reparto: "Reparto", Temas: "Temas", "Géneros": "Géneros", "País": "País" };
+
+/** Todos los textos que escribe el JavaScript, en los dos idiomas. */
+const TEXTOS = {
+  es: {
+    locale: "es-ES", decimal: ",", pais: "Netflix España",
+    tipo: { p: "Película", s: "Serie" },
+    publico: "Recomendada por el público",
+    porciento: (n) => `${n} %`,
+    noEncontrado: (q) => `No encontramos «${q}» en el catálogo actual de Netflix España. Prueba con otro título.`,
+    errorFichas: "No se han podido cargar las recomendaciones. Recarga la página.",
+    errorCatalogo: "No se ha podido cargar el catálogo. Recarga la página.",
+    estos: { t: "Estos títulos", p: "Estas películas", s: "Estas series" },
+    contexto: (estos, nombre, meta) => `${estos} del catálogo de Netflix España son los que más se parecen a ${nombre} (${meta.toLowerCase()}), ordenados por afinidad.`,
+    sinParecidas: (f) => `No hay ${{ t: "títulos parecidos", p: "películas parecidas", s: "series parecidas" }[f]} en el catálogo. Prueba con «Todo».`,
+    afinidad: "afinidad",
+    deAfinidad: (n) => `${n} % de afinidad`,
+    primera: "La que más se parece",
+    partirDeEsta: "Recomiéndame a partir de esta",
+    verFicha: "Ver ficha",
+    y: " y ",
+    elige: "Elige un título y verás aquí qué tiene en común con su mejor recomendación.",
+    coinciden: (lista) => ` coinciden en ${lista}. `,
+    sinCoincidencias: " se parecen por su sinopsis y su formato. ",
+    comunidad: "Además, según la comunidad de TMDb, a quien le gustó una también le gustó la otra. ",
+    cierreExplica: (n, nivel) => `Con un ${n} % de afinidad (${nivel}), es la primera recomendación. Los grupos marcados son los que más han pesado.`,
+    niveles: ["del mismo estilo", "muy parecida", "de la misma familia"],
+    tuBusqueda: (n) => `Tu búsqueda · ${n} %`,
+    cartelDe: (nombre) => `Cartel de ${nombre}`,
+    nota: (n) => `nota ${n}`,
+    sinSinopsis: "Sin sinopsis.",
+    generos: "Géneros", direccion: "Dirección", creacion: "Creación", reparto: "Reparto",
+    partirSerie: "Recomiéndame a partir de esta serie",
+    partirPelicula: "Recomiéndame a partir de esta película",
+    teDaTiempo: (t) => `Con ${t} te da tiempo a ver`,
+    duranMenos: (t) => `del catálogo de Netflix España: las que duran ${t} o menos.`,
+    masPopular: " La más popular es ",
+    queDura: (t) => `, que dura ${t}.`,
+    abanico: (n, t) => `Las ${n} películas más populares que puedes ver en ${t}.`,
+    pulsaUna: "Pulsa una y te recomendamos otras parecidas.",
+    verRecomendaciones: (nombre, min) => `${nombre}, ${min} minutos. Ver recomendaciones`,
+    actualizado: (fecha, total) => `Catálogo actualizado el ${fecha}: ${total} títulos.`,
+  },
+  en: {
+    locale: "en-US", decimal: ".", pais: "Netflix US",
+    tipo: { p: "Movie", s: "Series" },
+    publico: "Recommended by audiences",
+    porciento: (n) => `${n}%`,
+    noEncontrado: (q) => `We couldn't find “${q}” in the current Netflix US catalog. Try another title.`,
+    errorFichas: "The recommendations couldn't be loaded. Please reload the page.",
+    errorCatalogo: "The catalog couldn't be loaded. Please reload the page.",
+    estos: { t: "These titles", p: "These movies", s: "These series" },
+    contexto: (estos, nombre, meta) => `${estos} from the Netflix US catalog are the closest to ${nombre} (${meta.toLowerCase()}), ranked by affinity.`,
+    sinParecidas: (f) => `There are no similar ${{ t: "titles", p: "movies", s: "series" }[f]} in the catalog. Try “All”.`,
+    afinidad: "affinity",
+    deAfinidad: (n) => `${n}% affinity`,
+    primera: "The closest match",
+    partirDeEsta: "Recommend from this one",
+    verFicha: "Details",
+    y: " and ",
+    elige: "Pick a title and you'll see here what it shares with its top recommendation.",
+    coinciden: (lista) => ` share ${lista}. `,
+    sinCoincidencias: " are alike in their synopsis and format. ",
+    comunidad: "And according to the TMDb community, people who liked one also liked the other. ",
+    cierreExplica: (n, nivel) => `With ${n}% affinity (${nivel}), it is the top recommendation. The highlighted groups are the ones that weighed most.`,
+    niveles: ["same style", "very similar", "same family"],
+    tuBusqueda: (n) => `Your search · ${n}%`,
+    cartelDe: (nombre) => `Poster for ${nombre}`,
+    nota: (n) => `rated ${n}`,
+    sinSinopsis: "No synopsis.",
+    generos: "Genres", direccion: "Director", creacion: "Creator", reparto: "Cast",
+    partirSerie: "Recommend from this series",
+    partirPelicula: "Recommend from this movie",
+    teDaTiempo: (t) => `With ${t} you have time to watch`,
+    duranMenos: (t) => `from the Netflix US catalog: the ones that run ${t} or less.`,
+    masPopular: " The most popular is ",
+    queDura: (t) => `, which runs ${t}.`,
+    abanico: (n, t) => `The ${n} most popular movies you can watch in ${t}.`,
+    pulsaUna: "Tap one and we'll recommend similar ones.",
+    verRecomendaciones: (nombre, min) => `${nombre}, ${min} minutes. See recommendations`,
+    actualizado: (fecha, total) => `Catalog updated on ${fecha}: ${total} titles.`,
+  },
+};
+const T = TEXTOS[INGLES ? "en" : "es"];
+const TIPO = T.tipo;
+// Grupo de «Cómo decide» que ilumina cada motivo (los motivos llegan en el idioma de la web).
+const GRUPO = {
+  "Dirección": "Dirección", "Creación": "Dirección", Reparto: "Reparto", Temas: "Temas", "Géneros": "Géneros", "País": "País",
+  Director: "Dirección", Creator: "Dirección", Cast: "Reparto", Themes: "Temas", Genres: "Géneros", Country: "País",
+};
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -45,8 +137,9 @@ function imagen(ruta, tamano, alt = "", { prisa = false } = {}) {
 function titulo(i) { return estado.catalogo[i][0]; }
 function meta(i) { const [, , anio, tipo] = estado.catalogo[i]; return [TIPO[tipo], anio].filter(Boolean).join(" · "); }
 /** Nota del público ("★ 8,2"), o null si tiene muy pocos votos para fiarse. */
-function nota(i) { const n = estado.catalogo[i][7]; return n ? `★\u00a0${String(n).replace(".", ",")}` : null; }
-const PUBLICO = "Recomendada por el público";
+function decimal(n) { return String(n).replace(".", T.decimal); }
+function nota(i) { const n = estado.catalogo[i][7]; return n ? `★\u00a0${decimal(n)}` : null; }
+const PUBLICO = T.publico;
 
 /** Icono de dos personas: la comunidad de TMDb también lo recomienda. */
 function iconoPublico() {
@@ -57,7 +150,7 @@ function iconoPublico() {
   return svg;
 }
 // El castellano no separa los miles en números de cuatro cifras ("6580"), pero aquí se lee mejor "6.580".
-function numero(n) { return n.toLocaleString("es-ES", { useGrouping: "always" }); }
+function numero(n) { return n.toLocaleString(T.locale, { useGrouping: "always" }); }
 
 /** 190 -> "3 h 10 min", 120 -> "2 h", 45 -> "45 min". */
 function horas(minutos) {
@@ -73,7 +166,7 @@ function recortar(texto, max) {
 async function bloqueDe(i) {
   const n = Math.floor(i / POR_BLOQUE);
   if (!estado.bloques.has(n)) {
-    const ruta = `datos/fichas/${String(n).padStart(3, "0")}.json`;
+    const ruta = `${DATOS}fichas/${String(n).padStart(3, "0")}.json`;
     estado.bloques.set(n, fetch(ruta).then((r) => {
       if (!r.ok) throw new Error(`No se pudo cargar ${ruta}`);
       return r.json();
@@ -313,7 +406,7 @@ $("#buscador").addEventListener("submit", (e) => {
   const i = exacto(entrada.value);
   if (i < 0) {
     cerrarSugerencias();
-    $("#contexto").textContent = `No encontramos «${entrada.value}» en el catálogo actual de Netflix España. Prueba con otro título.`;
+    $("#contexto").textContent = T.noEncontrado(entrada.value);
     $("#mira").scrollIntoView();
     return;
   }
@@ -349,15 +442,14 @@ async function pintar() {
   try {
     ficha = await bloqueDe(i);
   } catch {
-    $("#contexto").textContent = "No se han podido cargar las recomendaciones. Recarga la página.";
+    $("#contexto").textContent = T.errorFichas;
     caja.removeAttribute("aria-busy");
     return;
   }
 
   const ids = ficha.l[estado.filtro];
   const [nombre, , , , cartel] = estado.catalogo[i];
-  const estos = { t: "Estos títulos", p: "Estas películas", s: "Estas series" }[estado.filtro];
-  const que = { t: "títulos", p: "películas", s: "series" }[estado.filtro];
+  const estos = T.estos[estado.filtro];
 
   const [primera, ...resto] = ids.slice(0, 11);
   const fichaPrimera = primera !== undefined ? await bloqueDe(primera).catch(() => null) : null;
@@ -367,8 +459,8 @@ async function pintar() {
     $("#mira-nombre").textContent = nombre;
     $("#contexto").replaceChildren(
       ids.length
-        ? `${estos} del catálogo de Netflix España son los que más se parecen a ${nombre} (${meta(i).toLowerCase()}), ordenados por afinidad.`
-        : `No hay ${que} parecidas en el catálogo. Prueba con «Todo».`);
+        ? T.contexto(estos, nombre, meta(i))
+        : T.sinParecidas(estado.filtro));
     caja.replaceChildren(...(ids.length ? [destacada(primera, ficha.r[primera], fichaPrimera), carteles(resto, ficha.r)] : []));
     caja.removeAttribute("aria-busy");
   });
@@ -396,20 +488,20 @@ function destacada(j, [afinidad, motivos, publico], ficha) {
   const fondo = ficha?.bd ? imagen(ficha.bd, "w1280", "", { prisa: true }) : (cartel ? imagen(cartel, "w780", "", { prisa: true }) : null);
   return crear("article", { class: "destacada aparecer", onclick: abrir },
     crear("div", { class: "destacada-fondo" }, fondo),
-    crear("div", { class: "anillo", "data-afinidad": afinidad, role: "img", "aria-label": `${afinidad} % de afinidad` },
-      crear("b", { texto: `${afinidad}%` }), crear("span", { texto: "afinidad" })),
+    crear("div", { class: "anillo", "data-afinidad": afinidad, role: "img", "aria-label": T.deAfinidad(afinidad) },
+      crear("b", { texto: `${afinidad}%` }), crear("span", { texto: T.afinidad })),
     crear("div", { class: "destacada-info" },
       crear("div", { class: "destacada-cabeza" },
         cartel ? crear("div", { class: "destacada-cartel" }, imagen(cartel, "w342", "", { prisa: true })) : null,
         crear("div", {},
-          crear("p", { class: "destacada-puesto", texto: "La que más se parece" }),
+          crear("p", { class: "destacada-puesto", texto: T.primera }),
           crear("h3", { class: "destacada-titulo" }, crear("button", { type: "button", texto: nombre, onclick: (e) => { e.stopPropagation(); abrir(); } })),
           crear("p", { class: "meta", texto: [meta(j), ficha?.dur, nota(j)].filter(Boolean).join(" · ") }))),
       motivos.length || publico ? chipsMotivos(motivos, publico) : null,
       ficha?.d ? crear("p", { class: "destacada-sinopsis", texto: recortar(ficha.d, 240) }) : null,
       crear("div", { class: "destacada-acciones" },
-        crear("button", { type: "button", class: "boton", texto: "Recomiéndame a partir de esta", onclick: (e) => { e.stopPropagation(); elegir(j); } }),
-        crear("button", { type: "button", class: "boton boton-fantasma", texto: "Ver ficha", onclick: (e) => { e.stopPropagation(); abrir(); } }))));
+        crear("button", { type: "button", class: "boton", texto: T.partirDeEsta, onclick: (e) => { e.stopPropagation(); elegir(j); } }),
+        crear("button", { type: "button", class: "boton boton-fantasma", texto: T.verFicha, onclick: (e) => { e.stopPropagation(); abrir(); } }))));
 }
 
 function carteles(ids, recomendados) {
@@ -418,7 +510,7 @@ function carteles(ids, recomendados) {
     const [afinidad, motivos, publico] = recomendados[j];
     const abrir = () => abrirFicha(j, motivos, publico);
     const marco = crear("div", { class: "cartel-marco" },
-      crear("span", { class: "cartel-puesto", texto: `${afinidad}%`, "aria-label": `${afinidad} % de afinidad` }),
+      crear("span", { class: "cartel-puesto", texto: `${afinidad}%`, "aria-label": T.deAfinidad(afinidad) }),
       publico ? crear("span", { class: "cartel-publico", title: PUBLICO, role: "img", "aria-label": PUBLICO }, iconoPublico()) : null,
       cartel ? imagen(cartel, "w342", "") : crear("div", { class: "sin-cartel-grande", texto: nombre }),
       motivos.length || publico ? crear("div", { class: "cartel-capa", "aria-hidden": "true" },
@@ -459,20 +551,20 @@ function explicar(origen, primera, datos) {
   const coinciden = new Set((datos?.[1] ?? []).map(([n]) => GRUPO[n]));
   $$("#pesos li").forEach((li) => li.classList.toggle("coincide", coinciden.has(li.dataset.grupo)));
   marcarEscala(datos?.[0]);
-  if (!datos) { caja.textContent = "Elige un título y verás aquí qué tiene en común con su mejor recomendación."; return; }
+  if (!datos) { caja.textContent = T.elige; return; }
   const [afinidad, motivos, publico] = datos;
   const partes = motivos.map(([n, v]) => `${n.toLowerCase()} (${v.join(", ")})`);
-  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}` : partes[0];
+  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(", ")}${T.y}${partes.at(-1)}` : partes[0];
   caja.replaceChildren(
-    crear("strong", { texto: titulo(origen) }), " y ", crear("strong", { texto: titulo(primera) }),
-    lista ? ` coinciden en ${lista}. ` : " se parecen por su sinopsis y su formato. ",
-    publico ? "Además, según la comunidad de TMDb, a quien le gustó una también le gustó la otra. " : "",
-    `Con un ${afinidad} % de afinidad (${nivel(afinidad)}), es la primera recomendación. Los grupos marcados son los que más han pesado.`);
+    crear("strong", { texto: titulo(origen) }), T.y, crear("strong", { texto: titulo(primera) }),
+    lista ? T.coinciden(lista) : T.sinCoincidencias,
+    publico ? T.comunidad : "",
+    T.cierreExplica(afinidad, nivel(afinidad)));
 }
 
 /** Lectura en palabras de un porcentaje de afinidad (la misma escala que explica la web). */
 function zona(afinidad) { return afinidad >= 40 ? 3 : afinidad >= 25 ? 2 : 1; }
-function nivel(afinidad) { return ["del mismo estilo", "muy parecida", "de la misma familia"][zona(afinidad) - 1]; }
+function nivel(afinidad) { return T.niveles[zona(afinidad) - 1]; }
 
 /** Lleva la marca del medidor a la afinidad de la mejor recomendación e ilumina su zona. */
 function marcarEscala(afinidad) {
@@ -480,7 +572,7 @@ function marcarEscala(afinidad) {
   const hay = Number.isFinite(afinidad);
   escala.classList.toggle("con-valor", hay);
   escala.style.setProperty("--valor", hay ? afinidad : 0);
-  if (hay) $("#medidor-texto").textContent = `Tu búsqueda · ${afinidad} %`;
+  if (hay) $("#medidor-texto").textContent = T.tuBusqueda(afinidad);
   $$("#escala .zonas li").forEach((li) => li.classList.toggle("activa", hay && Number(li.dataset.zona) === zona(afinidad)));
 }
 
@@ -519,23 +611,23 @@ async function abrirFicha(j, motivos = [], publico = 0) {
   if (!ficha) return;
   const [nombre, alias, anio, tipo, cartel] = estado.catalogo[j];
   $("#ficha-fondo").replaceChildren(ficha.bd ? imagen(ficha.bd, "w1280", "", { prisa: true }) : "");
-  $("#ficha-cartel").replaceChildren(cartel ? imagen(cartel, "w342", `Cartel de ${nombre}`, { prisa: true }) : "");
+  $("#ficha-cartel").replaceChildren(cartel ? imagen(cartel, "w342", T.cartelDe(nombre), { prisa: true }) : "");
   $("#ficha-titulo").textContent = nombre;
-  $("#ficha-meta").textContent = [TIPO[tipo], anio, ficha.dur, ficha.nota ? `nota ${String(ficha.nota).replace(".", ",")}` : null, alias]
+  $("#ficha-meta").textContent = [TIPO[tipo], anio, ficha.dur, ficha.nota ? T.nota(decimal(ficha.nota)) : null, alias]
     .filter(Boolean).join(" · ");
   $("#ficha-motivos").replaceChildren(...itemsMotivos(motivos, publico).filter(Boolean));
   $("#ficha-motivos").hidden = !motivos.length && !publico;
-  $("#ficha-sinopsis").textContent = ficha.d || "Sin sinopsis.";
+  $("#ficha-sinopsis").textContent = ficha.d || T.sinSinopsis;
   const datos = [
-    ["Géneros", ficha.g],
-    [tipo === "s" ? "Creación" : "Dirección", ficha.dir],
-    ["Reparto", ficha.rep.join(", ")],
+    [T.generos, ficha.g],
+    [tipo === "s" ? T.creacion : T.direccion, ficha.dir],
+    [T.reparto, ficha.rep.join(", ")],
   ].filter(([, v]) => v);
   $("#ficha-datos").replaceChildren(...datos.flatMap(([k, v]) => [crear("dt", { texto: k }), crear("dd", { texto: v })]));
   const tmdb = $("#ficha-tmdb");
   tmdb.href = `https://www.themoviedb.org/${tipo === "s" ? "tv" : "movie"}/${ficha.tmdb}`;
   tmdb.hidden = !ficha.tmdb;
-  $("#ficha-partir").textContent = tipo === "s" ? "Recomiéndame a partir de esta serie" : "Recomiéndame a partir de esta película";
+  $("#ficha-partir").textContent = tipo === "s" ? T.partirSerie : T.partirPelicula;
   $("#ficha-partir").onclick = () => { dialogo.close(); elegir(j); };
   dialogo.showModal();
   dialogo.scrollTop = 0;
@@ -555,7 +647,7 @@ function contarPeliculas() {
   minutos.style.setProperty("--p", `${p}%`);
   const tiempo = horas(limite);
   $("#minutos-valor").textContent = tiempo;
-  $("#resultado-antes").textContent = `Con ${tiempo} te da tiempo a ver`;
+  $("#resultado-antes").textContent = T.teDaTiempo(tiempo);
 
   const caben = [];
   estado.catalogo.forEach(([, , , tipo, , , duracion], i) => {
@@ -566,18 +658,18 @@ function contarPeliculas() {
   const cinco = caben.filter((i) => estado.catalogo[i][4]).slice(0, 5);
 
   const explica = $("#noche-explica");
-  explica.replaceChildren(`del catálogo de Netflix España: las que duran ${tiempo} o menos.`);
+  explica.replaceChildren(T.duranMenos(tiempo));
   if (cinco.length) {
     const mejor = cinco[0];
-    explica.append(" La más popular es ", crear("a", {
+    explica.append(T.masPopular, crear("a", {
       href: `?t=${encodeURIComponent(titulo(mejor))}`, texto: titulo(mejor),
       onclick: (e) => { e.preventDefault(); elegir(mejor); },
-    }), `, que dura ${horas(estado.catalogo[mejor][6])}.`);
+    }), T.queDura(horas(estado.catalogo[mejor][6])));
   }
 
   $("#abanico-pie").replaceChildren(
-    crear("strong", { texto: `Las ${cinco.length} películas más populares que puedes ver en ${tiempo}.` }),
-    crear("br"), "Pulsa una y te recomendamos otras parecidas.");
+    crear("strong", { texto: T.abanico(cinco.length, tiempo) }),
+    crear("br"), T.pulsaUna);
 
   const clave = cinco.join();
   if (clave === abanicoActual) return;
@@ -587,7 +679,7 @@ function contarPeliculas() {
   const orden = [cinco[3], cinco[1], cinco[0], cinco[2], cinco[4]].filter((i) => i !== undefined);
   abanico.classList.remove("cambia");
   abanico.replaceChildren(...orden.map((i) => crear("li", {},
-    crear("button", { type: "button", "aria-label": `${titulo(i)}, ${estado.catalogo[i][6]} minutos. Ver recomendaciones`, onclick: () => elegir(i) },
+    crear("button", { type: "button", "aria-label": T.verRecomendaciones(titulo(i), estado.catalogo[i][6]), onclick: () => elegir(i) },
       imagen(estado.catalogo[i][4], "w342", "")))));
   void abanico.offsetWidth;
   abanico.classList.add("cambia");
@@ -621,9 +713,9 @@ async function iniciar() {
 
   let datos;
   try {
-    datos = await fetch("datos/catalogo.json").then((r) => r.json());
+    datos = await fetch(`${DATOS}catalogo.json`).then((r) => r.json());
   } catch {
-    $("#contexto").textContent = "No se ha podido cargar el catálogo. Recarga la página.";
+    $("#contexto").textContent = T.errorCatalogo;
     return;
   }
   estado.catalogo = datos.titulos;
@@ -634,7 +726,7 @@ async function iniciar() {
   const total = estado.catalogo.length;
   const peliculas = estado.catalogo.filter((t) => t[3] === "p").length;
   const fecha = new Date(`${datos.actualizado}T12:00:00`);
-  $("#actualizado").textContent = `Catálogo actualizado el ${fecha.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}: ${numero(total)} títulos.`;
+  $("#actualizado").textContent = T.actualizado(fecha.toLocaleDateString(T.locale, { day: "numeric", month: "long", year: "numeric" }), numero(total));
   const cifras = $$("#cifras dd");
   [total, peliculas, total - peliculas].forEach((n, k) => { cifras[k].dataset.cuenta = n; cifras[k].textContent = numero(n); });
 
