@@ -1,7 +1,7 @@
 """Pruebas del script de descarga con un cliente falso (sin red ni clave de TMDb)."""
 import unittest
 
-from descargar_catalogo import es_alfabeto_latino, ficha_pelicula, ficha_serie, ids_en_netflix
+from descargar_catalogo import es_alfabeto_latino, ficha_pelicula, ficha_serie, ids_en_netflix, texto_temporadas
 
 PELICULA = {
     "id": 10, "title": "La deriva", "original_title": "Space Drift", "overview": "Astronautas en órbita.",
@@ -74,6 +74,13 @@ class TestDescarga(unittest.TestCase):
         self.assertEqual(f["country"], "ES")
         self.assertEqual(f["content_type"], "TV Show")
         self.assertEqual(f["duration"], "1 temporada")
+
+    def test_temporadas_en_el_idioma_del_catalogo(self):
+        self.assertEqual(texto_temporadas(1, "es-ES"), "1 temporada")
+        self.assertEqual(texto_temporadas(3, "es-ES"), "3 temporadas")
+        self.assertEqual(texto_temporadas(1, "en-US"), "1 season")
+        self.assertEqual(texto_temporadas(3, "en-US"), "3 seasons")
+        self.assertEqual(texto_temporadas(0, "en-US"), "")
 
     def test_alfabeto_latino(self):
         self.assertTrue(es_alfabeto_latino("Miércoles"))

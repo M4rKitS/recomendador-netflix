@@ -11,6 +11,7 @@ TMDb (The Movie Database) sabe qué títulos están disponibles en cada platafor
 Uso:
     python descargar_catalogo.py            # Netflix España
     python descargar_catalogo.py --pais MX  # Netflix México
+    python descargar_catalogo.py --pais US --idioma en-US  # Netflix USA, en inglés (web /en/)
 
 Necesita una clave de la API de TMDb en el archivo .env (ver .env.example).
 """
@@ -182,6 +183,15 @@ def imagenes(ficha):
     }
 
 
+def texto_temporadas(numero, idioma):
+    """3 -> '3 temporadas' (o '3 seasons' si el catálogo se descarga en inglés)."""
+    if not numero:
+        return ""
+    if idioma.startswith("en"):
+        return f"{numero} season{'s' if numero != 1 else ''}"
+    return f"{numero} temporada{'s' if numero != 1 else ''}"
+
+
 def clasificacion_pelicula(ficha, pais):
     for region in ficha.get("release_dates", {}).get("results", []):
         if region["iso_3166_1"] == pais:
@@ -246,7 +256,7 @@ def ficha_serie(cliente, tmdb_id, pais):
         "tmdb_score": f.get("vote_average") or "",
         "votes": f.get("vote_count", 0),
         "release_year": (f.get("first_air_date") or "")[:4],
-        "duration": f"{temporadas} temporada{'s' if temporadas != 1 else ''}" if temporadas else "",
+        "duration": texto_temporadas(temporadas, getattr(cliente, "idioma", "es-ES")),
         **imagenes(f),
     }, f)
 
