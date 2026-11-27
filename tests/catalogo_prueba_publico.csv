@@ -1,0 +1,8 @@
+tmdb_id,title,original_title,english_title,content_type,description,director,genres,keywords,cast,country,rating,tmdb_score,votes,release_year,duration,recommendations
+1,La fuga,La fuga,The Escape,Movie,Un preso planea escapar de la cárcel con un atraco.,Ana Ruiz,"Crimen, Drama","heist, prison, escape","Leo Mar, Eva Sol",Spain,16,7.8,5000,2015,110 min,3 99999
+2,La fuga 2,La fuga 2,The Escape 2,Movie,El preso vuelve a planear otro atraco.,Ana Ruiz,"Crimen, Drama","heist, prison","Leo Mar, Iker Paz",Spain,16,7.0,3000,2019,105 min,
+3,Celda once,Celda once,Cell Eleven,Movie,Un motín estalla en una cárcel.,Luis Gil,"Crimen, Drama",prison,"Sara Vela, Tomás Rey",France,16,7.2,800,2009,100 min,
+4,Huida al norte,Huida al norte,North Escape,Movie,Dos amigos huyen de la cárcel hacia el norte.,Marta Gil,"Crimen, Drama","prison, escape","Pablo Rus, Noa Rey",France,16,7.2,800,2012,98 min,
+5,Boda en la playa,Boda en la playa,Beach Wedding,Movie,Una boda en la playa se complica.,Rosa Lago,"Comedia, Romance","wedding, beach","Ana Luz, Raúl Paz",Italy,7,6.5,2000,2018,95 min,
+6,Vacaciones,Vacaciones,Holidays,Movie,Una familia se va de vacaciones a la playa.,Rosa Lago,"Comedia, Familia","beach, family","Ana Luz, Juan Mar",Italy,7,9.6,3,2020,92 min,
+7,Mi familia,Mi familia,My Family,Movie,Una familia numerosa intenta cenar junta.,Pedro Sanz,"Comedia, Familia","family, wedding","Juan Mar, Raúl Paz",Italy,7,6.8,20000,2016,99 min,

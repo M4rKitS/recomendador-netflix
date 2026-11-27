@@ -28,6 +28,7 @@ from recomendador import Recomendador, buscar_csv
 CARPETA = Path(__file__).parent
 SALIDA = CARPETA / "web" / "datos"
 POR_BLOQUE = 100
+VOTOS_PARA_NOTA = 20  # con menos votos, la nota no se muestra: no es fiable
 RECOMENDACIONES = 12  # por cada lista: todo, películas y series
 TIPOS = {"Movie": "p", "TV Show": "s"}
 NOMBRES_MOTIVO = {
@@ -44,6 +45,13 @@ def minutos(duracion):
     """'120 min' -> 120; las series no tienen una duración comparable."""
     m = re.match(r"(\d+)\s*min", texto(duracion))
     return int(m.group(1)) if m else 0
+
+
+def nota_publica(fila):
+    """Nota del público con un decimal, o 0 si tiene muy pocos votos para fiarse de ella."""
+    if pd.isna(fila["nota"]) or pd.isna(fila["votos"]) or fila["votos"] < VOTOS_PARA_NOTA:
+        return 0
+    return round(float(fila["nota"]), 1)
 
 
 def motivos(motor, origen, j):
@@ -86,11 +94,12 @@ def main():
             posters[i],
             int(fila["votos"]) if pd.notna(fila["votos"]) else 0,
             minutos(duraciones[i]) if fila["tipo"] == "Movie" else 0,
+            nota_publica(fila),
         ])
     catalogo = {
         "actualizado": date.fromtimestamp(ruta.stat().st_mtime).isoformat(),
         "pais": "ES",
-        "columnas": ["titulo", "alias", "anio", "tipo", "poster", "votos", "minutos"],
+        "columnas": ["titulo", "alias", "anio", "tipo", "poster", "votos", "minutos", "nota"],
         "titulos": titulos,
     }
     (SALIDA / "catalogo.json").write_text(json.dumps(catalogo, ensure_ascii=False, separators=(",", ":")))
@@ -101,17 +110,20 @@ def main():
     inicio = time.time()
     bloque = {}
     for i in range(len(datos)):
-        puntuacion = motor.puntuaciones(i)
+        afinidad, orden = motor.puntuar(i)
         listas = {}
         for clave, mascara in (("t", None), ("p", es_peli), ("s", es_serie)):
-            p = puntuacion if mascara is None else np.where(mascara, puntuacion, -1)
+            p = orden if mascara is None else np.where(mascara, orden, -1)
             mejores = np.argpartition(-p, RECOMENDACIONES)[:RECOMENDACIONES]
             mejores = mejores[np.argsort(-p[mejores])]
             listas[clave] = [int(j) for j in mejores if p[j] > 0]
 
         recomendados = {}
         for j in dict.fromkeys(listas["t"] + listas["p"] + listas["s"]):
-            recomendados[j] = [round(min(float(puntuacion[j]), 1.0) * 100), motivos(motor, i, j)]
+            # [afinidad en %, motivos, 1 si la comunidad de TMDb también lo recomienda]
+            recomendados[j] = [
+                round(min(float(afinidad[j]), 1.0) * 100), motivos(motor, i, j), int(j in motor.publico[i]),
+            ]
 
         fila = datos.iloc[i]
         reparto = [r for r in texto(fila["reparto"]).split(", ") if r][:5]

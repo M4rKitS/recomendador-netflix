@@ -5,6 +5,7 @@ TMDb (The Movie Database) sabe qué títulos están disponibles en cada platafor
 
 1. Pide a TMDb todas las películas y series disponibles hoy en Netflix en el país elegido.
 2. Descarga la ficha de cada una: sinopsis, géneros, país, reparto, director, nota...
+   y las recomendaciones del público de TMDb («a quien le gustó esto también le gustó...»).
 3. Lo guarda todo en data/catalogo_netflix_<pais>.csv, listo para el recomendador.
 
 Uso:
@@ -36,7 +37,7 @@ HILOS = 8  # peticiones en paralelo (TMDb permite unas 40 por segundo)
 COLUMNAS = [
     "tmdb_id", "title", "original_title", "english_title", "content_type", "description",
     "director", "genres", "keywords", "cast", "country", "rating", "tmdb_score", "votes",
-    "release_year", "duration", "popularity", "poster", "backdrop",
+    "release_year", "duration", "popularity", "poster", "backdrop", "recommendations",
 ]
 
 
@@ -161,10 +162,21 @@ def completar_textos(fila, ficha):
     return fila
 
 
+def recomendaciones_publico(ficha):
+    """Ids de TMDb que su comunidad recomienda a quien le gustó este título, en orden.
+
+    Son del mismo tipo (películas para una película, series para una serie) y pueden no
+    estar en Netflix: el recomendador se queda solo con las que están en el catálogo.
+    """
+    resultados = (ficha.get("recommendations") or {}).get("results", [])
+    return " ".join(str(r["id"]) for r in resultados if r.get("id"))
+
+
 def imagenes(ficha):
     """Rutas del cartel y la imagen de fondo en el CDN de TMDb, y su popularidad actual."""
     return {
         "popularity": round(ficha.get("popularity") or 0, 2),
+        "recommendations": recomendaciones_publico(ficha),
         "poster": ficha.get("poster_path") or "",
         "backdrop": ficha.get("backdrop_path") or "",
     }
@@ -187,7 +199,7 @@ def clasificacion_serie(ficha, pais):
 
 
 def ficha_pelicula(cliente, tmdb_id, pais):
-    f = cliente.get(f"/movie/{tmdb_id}", append_to_response="credits,release_dates,keywords,translations")
+    f = cliente.get(f"/movie/{tmdb_id}", append_to_response="credits,release_dates,keywords,translations,recommendations")
     if not f:
         return None
     equipo = f.get("credits", {})
@@ -214,7 +226,7 @@ def ficha_pelicula(cliente, tmdb_id, pais):
 
 
 def ficha_serie(cliente, tmdb_id, pais):
-    f = cliente.get(f"/tv/{tmdb_id}", append_to_response="aggregate_credits,content_ratings,keywords,translations")
+    f = cliente.get(f"/tv/{tmdb_id}", append_to_response="aggregate_credits,content_ratings,keywords,translations,recommendations")
     if not f:
         return None
     temporadas = f.get("number_of_seasons") or 0

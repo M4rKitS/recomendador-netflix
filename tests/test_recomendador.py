@@ -94,3 +94,46 @@ class TestCatalogoTMDb(unittest.TestCase):
         titulos = set(self.motor.datos["titulo"])
         self.assertIn("La deriva (2020)", titulos)
         self.assertIn("La deriva (2011)", titulos)
+
+
+class TestOpinionDelPublico(unittest.TestCase):
+    """La opinión del público cambia el orden, pero no el porcentaje de afinidad."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.motor = Recomendador.desde_csv(Path(__file__).parent / "catalogo_prueba_publico.csv")
+
+    def test_lo_que_recomienda_el_publico_sube_en_el_orden(self):
+        recs = self.motor.recomendar("La fuga")
+        titulos = [r.titulo for r in recs]
+        celda, huida = recs[titulos.index("Celda once")], recs[titulos.index("Huida al norte")]
+        self.assertLess(celda.similitud, huida.similitud)  # se parece menos...
+        self.assertLess(titulos.index("Celda once"), titulos.index("Huida al norte"))  # ...pero va antes
+        self.assertTrue(celda.publico)
+        self.assertFalse(huida.publico)
+
+    def test_la_afinidad_no_incluye_la_opinion(self):
+        i = self.motor.indice_de("La fuga")
+        afinidad, _ = self.motor.puntuar(i)
+        esperado = self.motor.similitudes(i) * self.motor._factor_calidad()
+        j = self.motor.indice_de("Celda once")
+        self.assertAlmostEqual(afinidad[j], esperado[j])
+
+    def test_la_recomendacion_del_publico_cuenta_en_los_dos_sentidos(self):
+        rec = next(r for r in self.motor.recomendar("Celda once") if r.titulo == "La fuga")
+        self.assertTrue(rec.publico)
+
+    def test_ignora_recomendaciones_que_no_estan_en_el_catalogo(self):
+        i = self.motor.indice_de("La fuga")
+        self.assertEqual(self.motor.publico[i], {self.motor.indice_de("Celda once"): 1.0})
+
+    def test_la_nota_con_pocos_votos_se_acerca_a_la_media(self):
+        notas = self.motor.notas_bayesianas()
+        media = self.motor._media_nota
+        self.assertLess(abs(notas[self.motor.indice_de("Vacaciones")] - media), 0.2)  # un 9,6 con 3 votos
+        self.assertAlmostEqual(notas[self.motor.indice_de("Mi familia")], 6.8, delta=0.05)  # 20.000 votos
+
+    def test_catalogo_sin_recomendaciones_del_publico(self):
+        motor = Recomendador.desde_csv(Path(__file__).parent / "catalogo_prueba_tmdb.csv")
+        self.assertTrue(all(not p for p in motor.publico))
+        self.assertEqual(motor.recomendar("El gran golpe")[0].titulo, "El gran golpe: Berlín")

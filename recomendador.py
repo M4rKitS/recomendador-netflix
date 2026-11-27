@@ -1,4 +1,4 @@
-"""Motor de recomendación de Netflix basado en contenido.
+"""Motor de recomendación de Netflix híbrido: contenido + opinión del público.
 
 Cada título se describe con un conjunto de "características" (géneros, director,
 reparto, país, clasificación, tipo y palabras clave de la sinopsis). Dos títulos
@@ -7,6 +7,11 @@ se parecen cuando comparten características, y compartir una característica ra
 
 Cada título se convierte en un vector (peso del grupo × IDF de cada etiqueta) y la
 similitud entre dos títulos es el coseno entre sus vectores.
+
+Sobre esa afinidad de contenido se añade lo que opina la gente: la nota del público
+(ajustada por el número de votos) y las recomendaciones de la comunidad de TMDb
+(«a quien le gustó esto también le gustó...»). La opinión cambia el orden de las
+recomendaciones, pero no el porcentaje de afinidad, que sigue midiendo cuánto se parecen.
 """
 
 import re
@@ -38,6 +43,11 @@ PESOS = {
 # Solo cuentan los primeros actores del reparto: son los protagonistas.
 MAX_ACTORES = 6
 
+# Opinión del público.
+BONO_PUBLICO = 0.2  # hasta +20 % en el orden si la comunidad lo recomienda en primer lugar
+PESO_NOTA = 0.05  # +-5 % en el orden por cada punto de nota por encima o debajo de la media
+VOTOS_CONFIANZA = 200  # con menos votos, la nota se acerca a la media (nota bayesiana, como IMDb)
+
 # Nombres de columna posibles en los distintos CSV de Netflix de Kaggle.
 ALIAS_COLUMNAS = {
     "titulo": ["title"],
@@ -55,6 +65,8 @@ ALIAS_COLUMNAS = {
     "votos": ["votes", "vote_count"],
     "estreno": ["release_year", "release_date"],
     "duracion": ["duration"],
+    # Ids de TMDb que su comunidad recomienda a quien le gustó el título.
+    "publico": ["recommendations"],
     # Solo para la web (descargar_catalogo.py): no intervienen en la recomendación.
     "tmdb_id": ["tmdb_id"],
     "cartel": ["poster"],
@@ -187,6 +199,7 @@ class Recomendacion:
     generos: str
     descripcion: str
     coincidencias: dict = field(default_factory=dict)
+    publico: bool = False  # la comunidad de TMDb también lo recomienda
 
 
 class Recomendador:
@@ -203,6 +216,7 @@ class Recomendador:
                 if pd.notna(otro) and normalizar(otro):
                     self._indice_originales.setdefault(normalizar(otro), i)
         self._construir_caracteristicas()
+        self._construir_publico()
 
     @classmethod
     def desde_csv(cls, ruta):
@@ -280,6 +294,30 @@ class Recomendador:
             np.where(self.normas_grupo[g] > 0, self.pesos[g], 0.0) for g in self.pesos
         )
 
+    def _construir_publico(self):
+        """Recomendaciones de la comunidad de TMDb, como {título: fuerza} para cada título.
+
+        TMDb da unas 20 por título, de la más a la menos recomendada. Solo cuentan las que
+        están en el catálogo. La primera vale 1 y la vigésima 0,5. Se cuenta en los dos
+        sentidos: si a quien le gustó A le gusta B, a quien le gustó B también le gusta A.
+        """
+        n = len(self.datos)
+        self.publico = [dict() for _ in range(n)]
+        posicion = {}
+        for i, (tipo, tmdb_id) in enumerate(zip(self.datos["tipo"], self.datos["tmdb_id"])):
+            if pd.notna(tmdb_id):
+                posicion.setdefault((tipo, str(tmdb_id).split(".")[0]), i)
+        for i, (tipo, ids) in enumerate(zip(self.datos["tipo"], self.datos["publico"])):
+            if pd.isna(ids):
+                continue
+            for puesto, tmdb_id in enumerate(str(ids).split()):
+                j = posicion.get((tipo, tmdb_id))
+                if j is None or j == i:
+                    continue
+                fuerza = 1 - puesto / 40
+                for a, b in ((i, j), (j, i)):
+                    self.publico[a][b] = max(self.publico[a].get(b, 0), fuerza)
+
     # --- Búsqueda de títulos ---------------------------------------------- #
 
     def buscar_titulos(self, texto, limite=10):
@@ -345,29 +383,54 @@ class Recomendador:
         return np.sqrt(coseno * aspectos)
 
     def _factor_calidad(self):
-        """Multiplicador por título (se calcula una sola vez) que premia nota y popularidad.
+        """Multiplicador por título (se calcula una sola vez) que premia lo que ha visto más gente.
 
-        - Nota: ante dos títulos igual de parecidos, gana el mejor valorado (hasta un 3 %).
-          Una nota con muy pocos votos no es fiable, así que en ese caso se usa la mediana.
-        - Popularidad: es más probable que te guste lo que ha visto más gente (hasta un 15 %).
+        Es más probable que te guste algo que ha visto mucha gente (hasta un 15 %). Forma parte
+        del porcentaje de afinidad que se muestra, como hasta ahora.
         """
         if getattr(self, "_factor", None) is None:
-            nota = self.datos["nota"].copy()
-            if self.datos["votos"].notna().any():
-                nota[self.datos["votos"].fillna(0) < 20] = np.nan
-            nota = nota.fillna(self.datos["nota"].median()).fillna(0).to_numpy()
-            factor = 1 + 0.03 * nota / 10
             votos = np.log1p(self.datos["votos"].fillna(0).to_numpy())
-            if votos.max() > 0:
-                factor = factor * (1 + 0.15 * votos / votos.max())
-            self._factor = factor
+            self._factor = 1 + 0.15 * votos / votos.max() if votos.max() > 0 else np.ones(len(self.datos))
         return self._factor
 
+    def notas_bayesianas(self):
+        """Nota de cada título corregida por su número de votos (la fórmula del top 250 de IMDb).
+
+        nota = (v·R + m·C) / (v + m), con R la nota del título, v sus votos, C la nota media
+        del catálogo y m los votos que hacen falta para fiarse de una nota. Un 9 con 5 votos
+        se queda cerca de la media; un 8,5 con 20.000 votos se queda en 8,5.
+        """
+        if getattr(self, "_bayes", None) is None:
+            nota, votos = self.datos["nota"].to_numpy(float), self.datos["votos"].fillna(0).to_numpy(float)
+            hay = ~np.isnan(nota) & (votos > 0)
+            media = nota[hay].mean() if hay.any() else 0.0
+            v = np.where(hay, votos, 0.0)
+            self._media_nota = media
+            self._bayes = (v * np.nan_to_num(nota) + VOTOS_CONFIANZA * media) / (v + VOTOS_CONFIANZA)
+        return self._bayes
+
+    def _factor_opinion(self, i):
+        """Multiplicador que solo cambia el orden: nota del público y recomendaciones de la comunidad."""
+        factor = 1 + PESO_NOTA * (self.notas_bayesianas() - self._media_nota)
+        publico = np.zeros(len(self.datos))
+        for j, fuerza in self.publico[i].items():
+            publico[j] = fuerza
+        return factor * (1 + BONO_PUBLICO * publico)
+
+    def puntuar(self, i):
+        """(afinidad, orden) de todos los títulos respecto al título i; el propio queda a -1.
+
+        - afinidad: cuánto se parecen (0-1), lo que se muestra como porcentaje.
+        - orden: la afinidad corregida por la opinión del público, para ordenar.
+        """
+        afinidad = self.similitudes(i) * self._factor_calidad()
+        orden = afinidad * self._factor_opinion(i)
+        afinidad[i] = orden[i] = -1  # nunca recomendar el propio título
+        return afinidad, orden
+
     def puntuaciones(self, i):
-        """Puntuación final de todos los títulos respecto al título i (el propio queda a -1)."""
-        puntuacion = self.similitudes(i) * self._factor_calidad()
-        puntuacion[i] = -1  # nunca recomendar el propio título
-        return puntuacion
+        """Puntuación con la que se ordenan los títulos respecto al título i."""
+        return self.puntuar(i)[1]
 
     def recomendar(self, titulo, cantidad=10, tipo=None):
         """Devuelve los `cantidad` títulos más parecidos a `titulo`.
@@ -378,12 +441,12 @@ class Recomendador:
         if i is None:
             raise KeyError(f"No encuentro '{titulo}' en el catálogo.")
 
-        puntuacion = self.puntuaciones(i)
+        afinidad, orden = self.puntuar(i)
         if tipo:
-            puntuacion[(self.datos["tipo"] != tipo).to_numpy()] = -1
+            orden[(self.datos["tipo"] != tipo).to_numpy()] = -1
 
-        mejores = np.argsort(-puntuacion)[:cantidad]
-        return [self._crear_recomendacion(i, j, puntuacion[j]) for j in mejores if puntuacion[j] > 0]
+        mejores = np.argsort(-orden)[:cantidad]
+        return [self._crear_recomendacion(i, j, afinidad[j]) for j in mejores if orden[j] > 0]
 
     def _crear_recomendacion(self, origen, j, puntuacion):
         fila = self.datos.iloc[j]
@@ -401,6 +464,7 @@ class Recomendador:
             generos="" if pd.isna(fila["generos"]) else str(fila["generos"]),
             descripcion="" if pd.isna(fila["descripcion"]) else str(fila["descripcion"]),
             coincidencias=coincidencias,
+            publico=j in self.publico[origen],
         )
 
     def tipos(self):
