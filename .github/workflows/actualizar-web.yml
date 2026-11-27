@@ -1,5 +1,6 @@
-# Actualiza la web cada mes: descarga el catálogo actual de Netflix España desde TMDb,
-# recalcula todas las recomendaciones con el motor en Python y publica en Cloudflare Pages.
+# Actualiza la web cada mes: descarga los catálogos actuales de Netflix España (web en
+# castellano) y Netflix USA (web en inglés, en /en/) desde TMDb, recalcula todas las
+# recomendaciones con el motor en Python y publica en Cloudflare Pages.
 #
 # Secretos necesarios (Settings → Secrets and variables → Actions):
 #   TMDB_API_KEY            clave o token de lectura de la API de TMDb
@@ -52,18 +53,24 @@ jobs:
       - name: Pruebas del motor
         run: python -m unittest discover -s tests -t .
 
-      - name: Descargar el catálogo actual de TMDb
+      - name: Descargar los catálogos actuales de TMDb
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-        run: python -u descargar_catalogo.py
+        run: |
+          python -u descargar_catalogo.py --pais ES --idioma es-ES
+          python -u descargar_catalogo.py --pais US --idioma en-US
 
-      - name: Comprobar que el catálogo está completo
+      - name: Comprobar que los catálogos están completos
         # Si TMDb falla a medias, mejor no publicar que publicar un catálogo cojo: la web se
         # queda como estaba. Para si hay menos de 5.000 títulos o un 5 % menos que la última vez.
-        run: python comprobar_catalogo.py ${{ inputs.forzar && '--forzar' || '' }}
+        run: |
+          python comprobar_catalogo.py --pais ES ${{ inputs.forzar && '--forzar' || '' }}
+          python comprobar_catalogo.py --pais US ${{ inputs.forzar && '--forzar' || '' }}
 
       - name: Precalcular las recomendaciones
-        run: python -u exportar_web.py
+        run: |
+          python -u exportar_web.py --pais ES
+          python -u exportar_web.py --pais US
 
       - name: Publicar en Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -79,11 +86,13 @@ jobs:
         run: |
           python - <<'EOF' > ULTIMA_ACTUALIZACION.md
           import json
-          datos = json.load(open("web/datos/catalogo.json", encoding="utf-8"))
-          print(f"Última actualización del catálogo: {datos['actualizado']} ({len(datos['titulos'])} títulos).")
+          es, us = (json.load(open(f"web/datos/{p}/catalogo.json", encoding="utf-8")) for p in ("es", "us"))
+          print(f"Última actualización del catálogo: {es['actualizado']}.\n")
+          print(f"- Netflix España: {len(es['titulos'])} títulos.")
+          print(f"- Netflix USA: {len(us['titulos'])} títulos.")
           EOF
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add ULTIMA_ACTUALIZACION.md
-          git diff --cached --quiet || git commit -m "chore(datos): actualiza el catálogo de Netflix España"
+          git diff --cached --quiet || git commit -m "chore(datos): actualiza los catálogos de Netflix España y USA"
           git push
