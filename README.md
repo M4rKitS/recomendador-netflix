@@ -1,5 +1,7 @@
 # 🍿 ¿Qué veo ahora? · Recomendador de Netflix con Python
 
+**🇪🇸 Español** · [🇬🇧 English](README.en.md)
+
 **Dime una película o serie que te encantó y te digo qué ver esta noche en Netflix España, y por qué.**
 
 [![Web en línea](https://img.shields.io/badge/web-queveoahora.pages.dev-ffd166?style=for-the-badge)](https://queveoahora.pages.dev)
