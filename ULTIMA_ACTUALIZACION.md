@@ -1,4 +1,4 @@
-Última actualización del catálogo: 2026-11-27.
+Última actualización del catálogo: 2026-11-28.
 
-- Netflix España: 8994 títulos.
-- Netflix USA: 7599 títulos.
+- Netflix España: 9887 títulos.
+- Netflix USA: 8456 títulos.
