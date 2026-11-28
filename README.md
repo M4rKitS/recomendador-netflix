@@ -2,7 +2,7 @@
 
 **🇪🇸 Español** · [🇬🇧 English](README.en.md)
 
-**Dime una película o serie que te encantó y te digo qué ver esta noche en Netflix España, y por qué.**
+**Dime una película o serie que te encantó y te digo qué ver ahora en Netflix España, y por qué.**
 
 [![Web en línea](https://img.shields.io/badge/web-queveoahora.pages.dev-ffd166?style=for-the-badge)](https://queveoahora.pages.dev)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
@@ -226,7 +226,7 @@ python -m http.server 8000 --directory web      # y abre http://localhost:8000
 python -m unittest discover -s tests -t .
 ```
 
-35 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
+36 pruebas que no necesitan red ni clave. Usan CSV pequeños con títulos inventados (uno con el
 formato de Kaggle y otro con el de TMDb) y un cliente de TMDb falso para el descargador.
 
 ## 📁 Estructura

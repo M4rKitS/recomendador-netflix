@@ -2,9 +2,9 @@
 
 [🇪🇸 Español](README.md) · **🇬🇧 English**
 
-**Tell it a film or series you loved, and it tells you what to watch tonight on Netflix Spain, and why.**
+**Tell it a film or series you loved, and it tells you what to watch now on Netflix Spain, and why.**
 
-*«¿Qué veo ahora?» is Spanish for "What should I watch now?". The site has a Spanish version
+*«¿Qué veo ahora?» is Spanish for "What should I watch now?", and the English site is called "What should I watch?". The site has a Spanish version
 (Netflix Spain) and an English one that uses the Netflix US catalogue.*
 
 [![Live site](https://img.shields.io/badge/live-queveoahora.pages.dev-ffd166?style=for-the-badge)](https://queveoahora.pages.dev)
@@ -229,7 +229,7 @@ python -m http.server 8000 --directory web      # then open http://localhost:800
 python -m unittest discover -s tests -t .
 ```
 
-35 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
+36 tests that need no network or key. They use small CSVs with made-up titles (one in Kaggle's
 format and one in TMDb's) and a fake TMDb client for the downloader.
 
 ## 📁 Structure
