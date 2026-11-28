@@ -14,7 +14,7 @@
 👉 **Try it in English (Netflix US) at https://queveoahora.pages.dev/en/** · Spanish version
 (Netflix Spain): **https://queveoahora.pages.dev**
 
-![Home page: a wall of posters from the catalogue with the search box on top](docs/portada.jpg)
+![Home page: a wall of posters from the catalogue with the search box on top](docs/portada-en.jpg)
 
 Portfolio project for the advanced Python module of the **Conquer Blocks Full Stack Master's**.
 
@@ -57,7 +57,7 @@ them. No black boxes: the website shows live how it reached each decision.
   preferences.
 
 <p align="center">
-  <img src="docs/movil.jpg" alt="The home page on a phone" width="260">
+  <img src="docs/movil-en.jpg" alt="The home page on a phone" width="260">
   &nbsp;&nbsp;
   <img src="docs/movil-resultado.jpg" alt="Recommendations for Squid Game on a phone" width="260">
 </p>
